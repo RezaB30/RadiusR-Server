@@ -118,6 +118,7 @@
     <Compile Include="Packet\AttributeEnums\TunnelMediumType.cs" />
     <Compile Include="Packet\AttributeEnums\TunnelType.cs" />
     <Compile Include="Packet\AttributeType.cs" />
+    <Compile Include="Packet\InterrimAccountingRecord.cs" />
     <Compile Include="Packet\MessageTypes.cs" />
     <Compile Include="Packet\NasTypes.cs" />
     <Compile Include="Packet\NATType.cs" />
@@ -166,6 +167,9 @@
     <None Include="App.config" />
     <None Include="NLog.config" />
     <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Service Include="{508349B6-6B84-4DF5-91F0-309BEEBAD82D}" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

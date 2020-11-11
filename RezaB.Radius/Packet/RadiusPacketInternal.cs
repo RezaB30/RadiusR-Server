@@ -7,15 +7,21 @@ using RezaB.Radius.Vendors;
 using System;
 using System.Collections.Generic;
 using System.Data.Entity;
+using System.Transactions;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
+using System.Data.Common;
+using NLog;
 
 namespace RezaB.Radius.Packet
 {
     public partial class RadiusPacket
     {
+        private static Logger dbLogger = LogManager.GetLogger("db");
+
         private Server.Caching.ServerDefaultsCache.ServerDefaults _serverCache = null;
         private Server.Caching.ServerDefaultsCache.ServerDefaults ServerCache
         {
@@ -42,8 +48,8 @@ namespace RezaB.Radius.Packet
                 SubscriptionID = dbSubscription.ID,
                 CalledStationID = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CalledStationId) != null ? Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CalledStationId).Value : null,
                 CallingStationID = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CallingStationId) != null ? Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CallingStationId).Value : null,
-                DownloadBytes = 0,
-                UploadBytes = 0,
+                DownloadBytes = DownloadedBytes,
+                UploadBytes = UploadedBytes,
                 FramedIPAddress = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.FramedIPAddress).Value,
                 FramedProtocol = short.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.FramedProtocol).Value),
                 NASIP = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.NASIPAddress).Value,
@@ -51,7 +57,7 @@ namespace RezaB.Radius.Packet
                 NASportType = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.NASPortType) != null ? Attributes.FirstOrDefault(attr => attr.Type == AttributeType.NASPortType).Value : null,
                 ServiceType = short.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.ServiceType).Value),
                 SessionID = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionId).Value,
-                SessionTime = 0,
+                SessionTime = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime) != null ? long.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime).Value) : 0,
                 StartTime = DateTime.Now,
                 Username = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserName).Value,
                 UniqueID = UniqueSessionId,
@@ -67,43 +73,18 @@ namespace RezaB.Radius.Packet
                     PortRange = clientIPInfo.PortRange
                 } : null
             };
-            //// setting IP info based on NAS NAT type
-            //if (framedIPAddressAttribute != null)
-            //{
-            //    if (!string.IsNullOrEmpty(dbSubscription.StaticIP))
-            //    {
-            //        tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-            //        {
-            //            LocalIP = framedIPAddressAttribute.Value,
-            //            RealIP = framedIPAddressAttribute.Value,
-            //            PortRange = "0-65535"
-            //        };
-            //    }
-            //    else
-            //    {
-            //        var clientIPInfo = _nasClientCredentials.GetClientIPInfo(framedIPAddressAttribute.Value);
-            //        if (clientIPInfo != null)
-            //        {
-            //            tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-            //            {
-            //                LocalIP = clientIPInfo.LocalIP,
-            //                RealIP = clientIPInfo.RealIP,
-            //                PortRange = clientIPInfo.PortRange
-            //            };
-            //        }
-            //    }
-            //}
         }
 
-        private void GetAuthenticationResponse(RadiusPacket responsePacket, PacketProcessingOptions ProcessingOptions)
+        private void GetAuthenticationResponse(DbConnection connection, RadiusPacket responsePacket, PacketProcessingOptions ProcessingOptions)
         {
-            using (RadiusREntities db = new RadiusREntities())
+            using (RadiusREntities db = new RadiusREntities(connection))
             {
+                db.Database.Log = dbLogger.Trace;
                 db.Configuration.AutoDetectChangesEnabled = false;
                 // check user password
                 logger.Trace("Checking password.");
                 var username = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserName).Value;
-                var dbSubscription = FindSubscriber(username, db);
+                var dbSubscription = FindSubscriber(db, username);
                 if (dbSubscription == null)
                 {
                     responsePacket.AccessReject();
@@ -117,7 +98,7 @@ namespace RezaB.Radius.Packet
 
                 // if reached simultaneous use cap
                 logger.Trace("Checking simultaneous use.");
-                if (HasMaxSimultaneousUse(dbSubscription))
+                if (HasMaxSimultaneousUse(connection, dbSubscription))
                 {
                     responsePacket.AccessReject();
                     return;
@@ -125,7 +106,7 @@ namespace RezaB.Radius.Packet
 
                 // if the account is expired
                 logger.Trace("Checking active.");
-                var currentState = CheckSubscriptionChange(dbSubscription);
+                var currentState = CheckSubscriptionChange(connection, dbSubscription);
                 //if (currentState.State == SubscriptionStateChange.SubscriptionState.Inactive)
                 //{
                 //    responsePacket.AccessReject();
@@ -178,7 +159,7 @@ namespace RezaB.Radius.Packet
             }
         }
 
-        private void GetAccountingResponse(ref RadiusPacket responsePacket, PacketProcessingOptions ProcessingOptions)
+        private void GetAccountingResponse(DbConnection connection, ref RadiusPacket responsePacket, PacketProcessingOptions ProcessingOptions)
         {
             responsePacket.Code = MessageTypes.AccountingResponse;
             var AccountingStatusTypeAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctStatusType);
@@ -194,11 +175,12 @@ namespace RezaB.Radius.Packet
                 responsePacket = null;
                 return;
             }
-            using (RadiusREntities db = new RadiusREntities())
+            using (var db = new RadiusREntities(connection))
             {
+                db.Database.Log = dbLogger.Trace;
                 var accountingStatusType = (AcctStatusType)short.Parse(AccountingStatusTypeAttribute.Value);
                 var username = usernameAttribute.Value;
-                var dbSubscription = FindSubscriber(username, db);
+                var dbSubscription = db.Subscriptions.FirstOrDefault(s => s.Username == username);
                 if (dbSubscription == null)
                 {
                     responsePacket = null;
@@ -209,71 +191,58 @@ namespace RezaB.Radius.Packet
                 {
                     case AcctStatusType.Start:
                         {
-                            RadiusAccounting newAccountingRecord;
-                            RadiusAccounting foundAccountingRecord;
                             try
                             {
-                                foundAccountingRecord = FindAccountingrecord(db, dbSubscription);
-                                var tempAccountingRecord = foundAccountingRecord ?? CreateAccountingRecord(dbSubscription, framedIPAddressAttribute);
-
-                                //// setting IP info based on NAS NAT type
-                                //if (framedIPAddressAttribute != null)
-                                //{
-                                //    if (!string.IsNullOrEmpty(dbSubscription.StaticIP))
-                                //    {
-                                //        tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-                                //        {
-                                //            LocalIP = framedIPAddressAttribute.Value,
-                                //            RealIP = framedIPAddressAttribute.Value,
-                                //            PortRange = "0-65535"
-                                //        };
-                                //    }
-                                //    else
-                                //    {
-                                //        var clientIPInfo = _nasClientCredentials.GetClientIPInfo(framedIPAddressAttribute.Value);
-                                //        if (clientIPInfo != null)
-                                //        {
-                                //            tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-                                //            {
-                                //                LocalIP = clientIPInfo.LocalIP,
-                                //                RealIP = clientIPInfo.RealIP,
-                                //                PortRange = clientIPInfo.PortRange
-                                //            };
-                                //        }
-                                //    }
-                                //}
-                                // set the record
-                                newAccountingRecord = tempAccountingRecord;
+                                // try to find the accounting record first
+                                var foundAccountingRecord = FindAccountingRecord(db, dbSubscription.ID);
+                                if (foundAccountingRecord != null)
+                                {
+                                    var foundRecord = new RadiusAccounting()
+                                    {
+                                        ID = foundAccountingRecord.ID,
+                                        StopTime = null,
+                                        UpdateTime = DateTime.Now,
+                                        TerminateCause = null
+                                    };
+                                    db.RadiusAccountings.Attach(foundRecord);
+                                    db.Entry(foundRecord).Property(fr => fr.StopTime).IsModified = true;
+                                    db.Entry(foundRecord).Property(fr => fr.UpdateTime).IsModified = true;
+                                    db.Entry(foundRecord).Property(fr => fr.TerminateCause).IsModified = true;
+                                    db.Configuration.ValidateOnSaveEnabled = false;
+                                }
+                                // if not found add a new one
+                                else
+                                {
+                                    var newAccountingRecord = CreateAccountingRecord(dbSubscription, framedIPAddressAttribute);
+                                    db.RadiusAccountings.Add(newAccountingRecord);
+                                }
+                                // save
+                                db.SaveChanges();
                             }
                             catch
                             {
                                 responsePacket = null;
                                 return;
                             }
-
-                            if (foundAccountingRecord == null)
-                                db.RadiusAccountings.Add(newAccountingRecord);
-                            db.SaveChanges();
-
                             return;
                         }
                     case AcctStatusType.Stop:
                         {
                             // check if relevant record exists in database
-                            var accountingRecord = FindAccountingrecord(db, dbSubscription);
-                            if (accountingRecord == null)
+                            var interrimAccountingRecord = FindAccountingRecord(db, dbSubscription.ID);
+                            if (interrimAccountingRecord == null)
                             {
                                 responsePacket = null;
                                 return;
                             }
                             // set prequisites
                             var today = DateTime.Now.Date;
-                            var uploadedBytesChange = UploadedBytes - accountingRecord.UploadBytes;
-                            var downloadedBytesChange = DownloadedBytes - accountingRecord.DownloadBytes;
+                            var uploadedBytesChange = UploadedBytes - interrimAccountingRecord.UploadBytes;
+                            var downloadedBytesChange = DownloadedBytes - interrimAccountingRecord.DownloadBytes;
                             // set daily accounting record
                             {
                                 var _newRecord = false;
-                                var dailyAccountingRecord = db.RadiusDailyAccountings.Where(dra => dra.Date == today).FirstOrDefault(dra => dra.SubscriptionID == dbSubscription.ID);
+                                var dailyAccountingRecord = db.RadiusDailyAccountings.Where(dra => dra.Date == today && dra.SubscriptionID == dbSubscription.ID).FirstOrDefault();
                                 if (dailyAccountingRecord == null)
                                 {
                                     dailyAccountingRecord = new RadiusDailyAccounting()
@@ -292,10 +261,10 @@ namespace RezaB.Radius.Packet
                                     db.RadiusDailyAccountings.Add(dailyAccountingRecord);
                             }
                             // set accounting record
-                            accountingRecord.DownloadBytes = DownloadedBytes;
-                            accountingRecord.UploadBytes = UploadedBytes;
-                            accountingRecord.StopTime = DateTime.Now;
-                            accountingRecord.SessionTime = long.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime).Value);
+                            interrimAccountingRecord.DownloadBytes = DownloadedBytes;
+                            interrimAccountingRecord.UploadBytes = UploadedBytes;
+                            interrimAccountingRecord.StopTime = DateTime.Now;
+                            interrimAccountingRecord.SessionTime = long.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime).Value);
                             var terminateCauseAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctTerminateCause);
                             if (terminateCauseAttribute == null)
                             {
@@ -306,8 +275,25 @@ namespace RezaB.Radius.Packet
                             short parsed;
                             if (short.TryParse(terminateCauseAttribute.Value, out parsed))
                             {
-                                accountingRecord.TerminateCause = parsed;
+                                interrimAccountingRecord.TerminateCause = parsed;
                             }
+                            // update
+                            var foundRecord = new RadiusAccounting()
+                            {
+                                ID = interrimAccountingRecord.ID,
+                                DownloadBytes = interrimAccountingRecord.DownloadBytes,
+                                UploadBytes = interrimAccountingRecord.UploadBytes,
+                                StopTime = interrimAccountingRecord.StopTime,
+                                SessionTime = interrimAccountingRecord.SessionTime,
+                                TerminateCause = interrimAccountingRecord.TerminateCause
+                            };
+                            db.RadiusAccountings.Attach(foundRecord);
+                            db.Entry(foundRecord).Property(fr => fr.DownloadBytes).IsModified = true;
+                            db.Entry(foundRecord).Property(fr => fr.UploadBytes).IsModified = true;
+                            db.Entry(foundRecord).Property(fr => fr.StopTime).IsModified = true;
+                            db.Entry(foundRecord).Property(fr => fr.SessionTime).IsModified = true;
+                            db.Entry(foundRecord).Property(fr => fr.TerminateCause).IsModified = true;
+                            db.Configuration.ValidateOnSaveEnabled = false;
                             // save to database
                             db.SaveChanges();
 
@@ -316,44 +302,41 @@ namespace RezaB.Radius.Packet
                     case AcctStatusType.InterimUpdate:
                         {
                             // check if relevant record exists in database
-                            var accountingRecord = FindAccountingrecord(db, dbSubscription);
+                            var accountingRecord = FindAccountingRecord(db, dbSubscription.ID);
+                            RadiusAccounting foundRecord = null;
+                            // add new record if not found
                             if (accountingRecord == null)
                             {
-                                // add new record if not found
-                                var tempAccountingRecord = CreateAccountingRecord(dbSubscription, framedIPAddressAttribute);
-                                
-                                //// setting IP info based on NAS NAT type
-                                //if (framedIPAddressAttribute != null)
-                                //{
-                                //    if (!string.IsNullOrEmpty(dbSubscription.StaticIP))
-                                //    {
-                                //        tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-                                //        {
-                                //            LocalIP = framedIPAddressAttribute.Value,
-                                //            RealIP = framedIPAddressAttribute.Value,
-                                //            PortRange = "0-65535"
-                                //        };
-                                //    }
-                                //    else
-                                //    {
-                                //        var clientIPInfo = _nasClientCredentials.GetClientIPInfo(framedIPAddressAttribute.Value);
-                                //        if (clientIPInfo != null)
-                                //        {
-                                //            tempAccountingRecord.RadiusAccountingIPInfo = new RadiusAccountingIPInfo()
-                                //            {
-                                //                LocalIP = clientIPInfo.LocalIP,
-                                //                RealIP = clientIPInfo.RealIP,
-                                //                PortRange = clientIPInfo.PortRange
-                                //            };
-                                //        }
-                                //    }
-                                //}
+                                foundRecord = CreateAccountingRecord(dbSubscription, framedIPAddressAttribute);
+                                db.RadiusAccountings.Add(foundRecord);
 
-                                accountingRecord = tempAccountingRecord;
-                                db.RadiusAccountings.Add(accountingRecord);
-                                // uncomment this if you want to ignore not existing interrim updates
-                                //responsePacket = null;
-                                //return;
+                                accountingRecord = new InterrimAccountingRecord()
+                                {
+                                    UploadBytes = foundRecord.UploadBytes,
+                                    DownloadBytes = foundRecord.DownloadBytes
+                                };
+                            }
+                            // update existing accounting record
+                            else
+                            {
+                                foundRecord = new RadiusAccounting()
+                                {
+                                    ID = accountingRecord.ID,
+                                    UploadBytes = UploadedBytes,
+                                    DownloadBytes = DownloadedBytes,
+                                    SessionTime = long.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime).Value),
+                                    UpdateTime = DateTime.Now,
+                                    StopTime = null,
+                                    TerminateCause = null
+                                };
+                                db.RadiusAccountings.Attach(foundRecord);
+                                db.Entry(foundRecord).Property(fr => fr.DownloadBytes).IsModified = true;
+                                db.Entry(foundRecord).Property(fr => fr.UploadBytes).IsModified = true;
+                                db.Entry(foundRecord).Property(fr => fr.StopTime).IsModified = true;
+                                db.Entry(foundRecord).Property(fr => fr.UpdateTime).IsModified = true;
+                                db.Entry(foundRecord).Property(fr => fr.SessionTime).IsModified = true;
+                                db.Entry(foundRecord).Property(fr => fr.TerminateCause).IsModified = true;
+                                db.Configuration.ValidateOnSaveEnabled = false;
                             }
                             // set prequisites
                             var today = DateTime.Now.Date;
@@ -362,7 +345,7 @@ namespace RezaB.Radius.Packet
                             // set daily accounting record
                             {
                                 var _newRecord = false;
-                                var dailyAccountingRecord = db.RadiusDailyAccountings.Where(dra => dra.Date == today).FirstOrDefault(dra => dra.SubscriptionID == dbSubscription.ID);
+                                var dailyAccountingRecord = db.RadiusDailyAccountings.Where(dra => dra.Date == today && dra.SubscriptionID == dbSubscription.ID).FirstOrDefault();
                                 if (dailyAccountingRecord == null)
                                 {
                                     dailyAccountingRecord = new RadiusDailyAccounting()
@@ -380,12 +363,6 @@ namespace RezaB.Radius.Packet
                                 if (_newRecord)
                                     db.RadiusDailyAccountings.Add(dailyAccountingRecord);
                             }
-                            // set accounting record
-                            accountingRecord.DownloadBytes = DownloadedBytes;
-                            accountingRecord.UploadBytes = UploadedBytes;
-                            accountingRecord.SessionTime = long.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctSessionTime).Value);
-                            accountingRecord.UpdateTime = DateTime.Now;
-                            accountingRecord.StopTime = null;
                             // save to database
                             db.SaveChanges();
                             return;
@@ -443,10 +420,11 @@ namespace RezaB.Radius.Packet
             return hashedString == requestAuthenticatorString;
         }
 
-        private SubscriptionStateChange CheckSubscriptionChange(Subscription dbSubscription)
+        private SubscriptionStateChange CheckSubscriptionChange(DbConnection connection, Subscription dbSubscription)
         {
-            using (RadiusREntities db = new RadiusREntities())
+            using (RadiusREntities db = new RadiusREntities(connection))
             {
+                db.Database.Log = dbLogger.Trace;
                 db.Configuration.AutoDetectChangesEnabled = false;
                 // check if is active
                 if (!dbSubscription.IsActive)
@@ -464,6 +442,15 @@ namespace RezaB.Radius.Packet
                     };
                 // get base rate limit without quota consideration
                 var rateLimit = dbSubscription.Service.CurrentRateLimit;
+
+                // -------------- SHOULD DELETE ----------------------
+                return new SubscriptionStateChange()
+                {
+                    State = SubscriptionStateChange.SubscriptionState.Active,
+                    RateLimit = rateLimit,
+                    SubscriberID = dbSubscription.ID
+                };
+                // ---------------------------------------------------
                 // check for non-quota
                 if (!dbSubscription.Service.QuotaType.HasValue)
                     return new SubscriptionStateChange()
@@ -472,22 +459,6 @@ namespace RezaB.Radius.Packet
                         RateLimit = rateLimit,
                         SubscriberID = dbSubscription.ID
                     };
-                // check quota usage
-                //if (!dbSubscription.LastPaymentPeriodStartDate.HasValue)
-                //    return new SubscriptionStateChange()
-                //    {
-                //        State = SubscriptionStateChange.SubscriptionState.Inactive,
-                //        SubscriberID = dbSubscription.ID
-                //    };
-                //var startDate = dbSubscription.LastPaymentPeriodStartDate.Value.Date;
-                //// get usage info
-                //var usageInfo = db.Subscriptions.Select(sub => new
-                //{
-                //    SubID = sub.ID,
-                //    Quota = sub.SubscriptionQuotas.Where(q => DbFunctions.TruncateTime(q.AddDate) >= startDate).Select(q => q.Amount).DefaultIfEmpty(0).Sum(),
-                //    Usage = sub.RadiusDailyAccountings.Where(rda => rda.Date >= startDate).Select(rda => rda.DownloadBytes + rda.UploadBytes).DefaultIfEmpty(0).Sum(),
-                //    LastQuota = sub.SubscriptionQuotas.OrderByDescending(q => q.AddDate).FirstOrDefault()
-                //}).FirstOrDefault(ui => ui.SubID == dbSubscription.ID);
                 var usageInfo = dbSubscription.GetQuotaAndUsageInfo();
                 // add base quota
                 var quota = usageInfo.PeriodQuota;
@@ -569,36 +540,44 @@ namespace RezaB.Radius.Packet
             }
         }
 
-        protected Subscription FindSubscriber(string username, RadiusREntities db = null)
+        protected Subscription FindSubscriber(RadiusREntities db, string username)
         {
             if (db != null)
             {
-                return db.Subscriptions.Include(s => s.Service.ServiceRateTimeTables).Include(s => s.RadiusSMS).FirstOrDefault(s => s.Username == username);
+                return db.Subscriptions.Where(s => s.Username == username).Include(s => s.Service.ServiceRateTimeTables).Include(s => s.RadiusSMS).FirstOrDefault();
             }
             else
             {
                 using (db = new RadiusREntities())
                 {
+                    db.Database.Log = dbLogger.Trace;
                     db.Configuration.AutoDetectChangesEnabled = false;
-                    return db.Subscriptions.Include(s => s.Service.ServiceRateTimeTables).Include(s => s.RadiusSMS).FirstOrDefault(s => s.Username == username);
+                    return db.Subscriptions.Where(s => s.Username == username).Include(s => s.Service.ServiceRateTimeTables).Include(s => s.RadiusSMS).FirstOrDefault();
                 }
             }
         }
 
-        protected RadiusAccounting FindAccountingrecord(RadiusREntities db, Subscription dbSubscription)
+        private InterrimAccountingRecord FindAccountingRecord(RadiusREntities db, long subscriptionId)
         {
-            //var startDate = DateTime.Now.AddDays(-5).Date;
-            //return db.RadiusAccountings.Where(ra => ra.StartTime > startDate && ra.SubscriptionID == dbSubscription.ID && ra.UniqueID == UniqueSessionId).FirstOrDefault();
-            var result = db.RadiusAccountings.Where(ra => ra.SubscriptionID == dbSubscription.ID).OrderByDescending(ra => ra.StartTime).FirstOrDefault();
+            var result = db.RadiusAccountings.Where(ra => ra.SubscriptionID == subscriptionId).OrderByDescending(ra => ra.StartTime).Select(ra => new InterrimAccountingRecord()
+            {
+                ID = ra.ID,
+                DownloadBytes = ra.DownloadBytes,
+                UploadBytes = ra.UploadBytes,
+                UpdateTime = ra.UpdateTime,
+                StopTime = ra.StopTime,
+                SessionTime = ra.SessionTime,
+                UniqueID = ra.UniqueID
+            }).FirstOrDefault();
             return (result != null && result.UniqueID == UniqueSessionId) ? result : null;
         }
 
-        protected bool HasMaxSimultaneousUse(Subscription dbSubscription)
+        protected bool HasMaxSimultaneousUse(DbConnection connection, Subscription dbSubscription)
         {
             int dbOnlineCount;
-            using (RadiusREntities db = new RadiusREntities())
+            using (RadiusREntities db = new RadiusREntities(connection))
             {
-                //db.Configuration.AutoDetectChangesEnabled = false;
+                db.Database.Log = dbLogger.Trace;
                 dbOnlineCount = db.RadiusAccountings.Where(ra => ra.SubscriptionID == dbSubscription.ID && !ra.StopTime.HasValue).Count();
             }
             return dbOnlineCount >= dbSubscription.SimultaneousUse;

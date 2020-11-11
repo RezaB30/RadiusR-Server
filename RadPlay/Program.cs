@@ -11,6 +11,7 @@ using RezaB.Radius.Caching;
 using RadiusRServerTest.Properties;
 using NLog;
 using System.Threading;
+using System.Configuration;
 
 namespace RadiusRServerTest
 {
@@ -33,7 +34,8 @@ namespace RadiusRServerTest
                 ServerLocalIP = Settings.Default.ServerLocalIP,
                 ThreadCount = Settings.Default.AuthenticationServerThreadCount,
                 PoolCapacity = Settings.Default.AuthenticationPoolCapacity,
-                ItemDiscardThreshold = Settings.Default.AuthenticationItemDiscardThreshold
+                ItemDiscardThreshold = Settings.Default.AuthenticationItemDiscardThreshold,
+                ConnectionString = ConfigurationManager.ConnectionStrings["RadiusREntities"].ConnectionString
             };
             AuthServer.Start(settings);
 
@@ -47,7 +49,8 @@ namespace RadiusRServerTest
                 COAThreadCount = Settings.Default.COAThreadCount,
                 COAPoolCapacity = Settings.Default.COAPoolCapacity,
                 PoolCapacity = Settings.Default.AccountingPoolCapacity,
-                ItemDiscardThreshold = Settings.Default.AccountingItemDiscardThreshold
+                ItemDiscardThreshold = Settings.Default.AccountingItemDiscardThreshold,
+                ConnectionString = ConfigurationManager.ConnectionStrings["RadiusREntities"].ConnectionString
             };
             AccServer.Start(settings);
 

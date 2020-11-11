@@ -22,5 +22,7 @@ namespace RezaB.Radius.Server
         public int ItemDiscardThreshold { get; set; }
 
         public string ServerLocalIP { get; set; }
+
+        public string ConnectionString { get; set; }
     }
 }

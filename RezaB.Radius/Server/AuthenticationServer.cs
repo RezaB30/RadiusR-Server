@@ -1,4 +1,5 @@
 ﻿using RezaB.Radius.Packet;
+using RezaB.Threading;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -18,11 +19,11 @@ namespace RezaB.Radius.Server
             ThreadNamePrefix = "Auth";
         }
 
-        protected override void ProcessPacket(RawRadiusPacket rawData)
+        protected override void ProcessPacket(ConnectableItem<RawRadiusPacket> rawDataItem)
         {
             try
             {
-                var nasCredentials = NasList.Get(rawData.EndPoint.Address);
+                var nasCredentials = NasList.Get(rawDataItem.Item.EndPoint.Address);
                 if (nasCredentials == null)
                 {
                     consoleLogger.Trace("Invalid NAS IP. Ignored!");
@@ -31,7 +32,7 @@ namespace RezaB.Radius.Server
                 RadiusPacket packet = null;
                 try
                 {
-                    packet = new RadiusPacket(rawData.Data, nasCredentials);
+                    packet = new RadiusPacket(rawDataItem.Item.Data, nasCredentials);
                 }
                 catch (Exception ex)
                 {
@@ -42,13 +43,13 @@ namespace RezaB.Radius.Server
                 consoleLogger.Trace(packet.GetLog());
 
                 {
-                    var previousIdentifier = identifierHistory[rawData.EndPoint.ToString()] as string;
+                    var previousIdentifier = identifierHistory[rawDataItem.Item.EndPoint.ToString()] as string;
                     if (previousIdentifier == packet.Identifier.ToString())
                     {
                         consoleLogger.Trace(string.Format("Same Identifier {0}... Ignored!", packet.Identifier));
                         return;
                     }
-                    identifierHistory.Set(rawData.EndPoint.ToString(), packet.Identifier.ToString(), DateTime.UtcNow.AddSeconds(5));
+                    identifierHistory.Set(rawDataItem.Item.EndPoint.ToString(), packet.Identifier.ToString(), DateTime.UtcNow.AddSeconds(5));
                 }
 
                 if (packet.Code != MessageTypes.AccessRequest)
@@ -61,7 +62,7 @@ namespace RezaB.Radius.Server
                 RadiusPacket responsePacket = null;
                 try
                 {
-                    responsePacket = packet.GetResponse(rawData.ProcessingOptions);
+                    responsePacket = packet.GetResponse(rawDataItem.DbConnection, rawDataItem.Item.ProcessingOptions);
                 }
                 catch (Exception ex)
                 {
@@ -79,11 +80,11 @@ namespace RezaB.Radius.Server
 
                 consoleLogger.Trace(responsePacket.GetLog());
 
-                consoleLogger.Trace("Sending response to " + rawData.EndPoint + " ...");
+                consoleLogger.Trace("Sending response to " + rawDataItem.Item.EndPoint + " ...");
                 // sending response
                 try
                 {
-                    _server.Send(toSendBytes, toSendBytes.Length, rawData.EndPoint);
+                    _server.Send(toSendBytes, toSendBytes.Length, rawDataItem.Item.EndPoint);
                 }
                 catch (Exception ex)
                 {

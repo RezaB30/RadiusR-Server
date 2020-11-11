@@ -25,15 +25,15 @@ namespace RezaB.Radius.Server
         {
             base.Start(serverSettings);
             consoleLogger.Trace("Initializing COA thread pool...");
-            _COAThreadPool = new CustomThreadPool<RadiusPacket>(serverSettings.COAThreadCount.HasValue ? serverSettings.COAThreadCount.Value : 32, SendCOAPacket, "COA", (i => i.ToString("000")), 10, 60000, serverSettings.COAPoolCapacity ?? 3000);
+            _COAThreadPool = new CustomThreadPool<RadiusPacket>(serverSettings.COAThreadCount ?? 32, SendCOAPacket, "COA", (i => i.ToString("000")), 100, 60000, serverSettings.COAPoolCapacity ?? 3000, serverSettings.ConnectionString);
             consoleLogger.Trace(string.Format("{0} threads initialized.", serverSettings.COAThreadCount));
         }
 
-        protected override void ProcessPacket(RawRadiusPacket rawData)
+        protected override void ProcessPacket(ConnectableItem<RawRadiusPacket> rawDataItem)
         {
             try
             {
-                var nasCredentials = NasList.Get(rawData.EndPoint.Address);
+                var nasCredentials = NasList.Get(rawDataItem.Item.EndPoint.Address);
                 if (nasCredentials == null)
                 {
                     consoleLogger.Trace("Invalid NAS IP. Ignored!");
@@ -42,7 +42,7 @@ namespace RezaB.Radius.Server
                 RadiusPacket packet = null;
                 try
                 {
-                    packet = new RadiusPacket(rawData.Data, nasCredentials);
+                    packet = new RadiusPacket(rawDataItem.Item.Data, nasCredentials);
                 }
                 catch (Exception ex)
                 {
@@ -53,13 +53,13 @@ namespace RezaB.Radius.Server
                 consoleLogger.Trace(packet.GetLog());
 
                 {
-                    var previousIdentifier = identifierHistory[rawData.EndPoint.ToString()] as string;
+                    var previousIdentifier = identifierHistory[rawDataItem.Item.EndPoint.ToString()] as string;
                     if (previousIdentifier == packet.Identifier.ToString())
                     {
                         consoleLogger.Trace(string.Format("Same Identifier {0}... Ignored!", packet.Identifier));
                         return;
                     }
-                    identifierHistory.Set(rawData.EndPoint.ToString(), packet.Identifier.ToString(), DateTime.UtcNow.AddSeconds(5));
+                    identifierHistory.Set(rawDataItem.Item.EndPoint.ToString(), packet.Identifier.ToString(), DateTime.UtcNow.AddSeconds(5));
                 }
 
                 if (packet.Code != MessageTypes.AccountingRequest)
@@ -72,7 +72,9 @@ namespace RezaB.Radius.Server
                 RadiusPacket responsePacket = null;
                 try
                 {
-                    responsePacket = packet.GetResponse(rawData.ProcessingOptions);
+                    if (rawDataItem.DbConnection.State != System.Data.ConnectionState.Open)
+                        rawDataItem.DbConnection.Open();
+                    responsePacket = packet.GetResponse(rawDataItem.DbConnection, rawDataItem.Item.ProcessingOptions);
                 }
                 catch (Exception ex)
                 {
@@ -90,11 +92,11 @@ namespace RezaB.Radius.Server
 
                 consoleLogger.Trace(responsePacket.GetLog());
 
-                consoleLogger.Trace("Sending response to " + rawData.EndPoint + " ...");
+                consoleLogger.Trace("Sending response to " + rawDataItem.Item.EndPoint + " ...");
                 // sending response
                 try
                 {
-                    _server.Send(toSendBytes, toSendBytes.Length, rawData.EndPoint);
+                    _server.Send(toSendBytes, toSendBytes.Length, rawDataItem.Item.EndPoint);
                 }
                 catch (Exception ex)
                 {
@@ -114,12 +116,15 @@ namespace RezaB.Radius.Server
             }
         }
 
-        protected void SendCOAPacket(RadiusPacket packet)
+        protected void SendCOAPacket(ConnectableItem<RadiusPacket> packetItem)
         {
             ChangeOfAccountingRequest COARequest = null;
             try
             {
-                COARequest = packet.GetClientRequest();
+                if (packetItem.DbConnection.State != System.Data.ConnectionState.Open)
+                    packetItem.DbConnection.Open();
+                
+                COARequest = packetItem.Item.GetClientRequest(packetItem.DbConnection);
             }
             catch (Exception ex)
             {

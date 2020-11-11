@@ -17,6 +17,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Data.Entity;
 using RadiusR.DB.Enums;
+using System.Data.Entity.Core.EntityClient;
+using System.Data.Common;
 
 namespace RezaB.Radius.Packet
 {
@@ -180,7 +182,7 @@ namespace RezaB.Radius.Packet
             return passwordHash == passwordAttribute.Value;
         }
 
-        public RadiusPacket GetResponse(PacketProcessingOptions options)
+        public RadiusPacket GetResponse(DbConnection connection, PacketProcessingOptions options)
         {
             var responsePacket = new RadiusPacket()
             {
@@ -191,12 +193,12 @@ namespace RezaB.Radius.Packet
 
             if (Code == MessageTypes.AccessRequest)
             {
-                GetAuthenticationResponse(responsePacket, options);
+                GetAuthenticationResponse(connection, responsePacket, options);
                 return responsePacket;
             }
             if (Code == MessageTypes.AccountingRequest)
             {
-                GetAccountingResponse(ref responsePacket, options);
+                GetAccountingResponse(connection, ref responsePacket, options);
                 return responsePacket;
             }
 
@@ -254,7 +256,7 @@ namespace RezaB.Radius.Packet
             return logText;
         }
 
-        public ChangeOfAccountingRequest GetClientRequest()
+        public ChangeOfAccountingRequest GetClientRequest(EntityConnection connection)
         {
             var usernameAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserName);
             var AccountingStatusTypeAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctStatusType);
@@ -271,11 +273,11 @@ namespace RezaB.Radius.Packet
             if (accountingStatusType != AcctStatusType.Start && accountingStatusType != AcctStatusType.InterimUpdate)
                 return null;
 
-            using (RadiusREntities db = new RadiusREntities())
+            using (RadiusREntities db = new RadiusREntities(connection))
             {
-                var dbSubscription = FindSubscriber(username, db);
+                var dbSubscription = FindSubscriber(db, username);
                 // check subscription state
-                var stateChange = CheckSubscriptionChange(dbSubscription);
+                var stateChange = CheckSubscriptionChange(connection, dbSubscription);
                 // check for expired (when bills payed should disconnect to change pool out of expired if has expired pool)
                 if (!stateChange.ExpiredPoolValid && isInExpiredPool)
                 {

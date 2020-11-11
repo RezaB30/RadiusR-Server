@@ -45,7 +45,7 @@ namespace RezaB.Radius.Server
             }
             // initialize thread pool
             consoleLogger.Trace("Initializing thread pool...");
-            _workPool = new CustomThreadPool<RawRadiusPacket>(serverSettings.ThreadCount, ProcessPacket, ThreadNamePrefix, (i => i.ToString("000")), 10, serverSettings.ItemDiscardThreshold, serverSettings.PoolCapacity);
+            _workPool = new CustomThreadPool<RawRadiusPacket>(serverSettings.ThreadCount, ProcessPacket, ThreadNamePrefix, (i => i.ToString("000")), 100, serverSettings.ItemDiscardThreshold, serverSettings.PoolCapacity, serverSettings.ConnectionString);
             consoleLogger.Trace(string.Format("{0} threads initialized.", serverSettings.ThreadCount));
             // start listening
             if (!string.IsNullOrWhiteSpace(serverSettings.ServerLocalIP))
@@ -99,7 +99,7 @@ namespace RezaB.Radius.Server
                             }
                         }))
                         {
-                            consoleLogger.Trace("Threadpool is full, Ignored!");
+                            consoleLogger.Warn("Threadpool is full, Ignored!");
                         }
                     }
                     else
@@ -124,7 +124,7 @@ namespace RezaB.Radius.Server
             logger.Trace("Thread pool threads disposed.");
         }
 
-        protected abstract void ProcessPacket(RawRadiusPacket rawData);
+        protected abstract void ProcessPacket(ConnectableItem<RawRadiusPacket> rawDataItem);
 
         public static void LogException(Exception ex, string message)
         {
