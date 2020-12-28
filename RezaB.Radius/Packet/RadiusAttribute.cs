@@ -35,45 +35,45 @@ namespace RezaB.Radius.Packet
                 switch (Type)
                 {
                     case AttributeType.ServiceType:
-                        return ((ServiceType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((ServiceType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.FramedProtocol:
-                        return ((FramedProtocol)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((FramedProtocol)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.FramedRouting:
-                        return ((FramedRouting)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((FramedRouting)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.FramedCompression:
-                        return ((FramedCompression)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((FramedCompression)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.LoginService:
-                        return ((LoginService)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((LoginService)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.TerminationAction:
-                        return ((TerminationAction)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((TerminationAction)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.AcctStatusType:
-                        return ((AcctStatusType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((AcctStatusType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.AcctAuthentic:
-                        return ((AcctAuthentic)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((AcctAuthentic)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.AcctTerminateCause:
-                        return ((AcctTerminateCause)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((AcctTerminateCause)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.NASPortType:
-                        return ((NASPortType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((NASPortType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.TunnelType:
-                        return ((TunnelType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((TunnelType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.TunnelMediumType:
-                        return ((TunnelMediumType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((TunnelMediumType)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.ARAPZoneAccess:
-                        return ((ARAPZoneAccess)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((ARAPZoneAccess)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.Prompt:
-                        return ((Prompt)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((Prompt)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.ErrorCause:
-                        return ((ErrorCause)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((ErrorCause)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.LocationInformation:
-                        return ((LocationInformation)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((LocationInformation)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.LocationCapable:
-                        return ((LocationCapable)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((LocationCapable)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.RequestedLocationInfo:
-                        return ((RequestedLocationInfo)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((RequestedLocationInfo)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.FramedManagementProtocol:
-                        return ((FramedManagementProtocol)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((FramedManagementProtocol)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     case AttributeType.ManagementTransportProtection:
-                        return ((ManagementTransportProtection)BitConverter.ToUInt32(RawValue.Reverse().ToArray(),0)).ToString();
+                        return ((ManagementTransportProtection)BitConverter.ToUInt32(RawValue.Reverse().ToArray(), 0)).ToString();
                     default:
                         return null;
                 }

@@ -443,14 +443,14 @@ namespace RezaB.Radius.Packet
                 // get base rate limit without quota consideration
                 var rateLimit = dbSubscription.Service.CurrentRateLimit;
 
-                // -------------- SHOULD DELETE ----------------------
-                return new SubscriptionStateChange()
-                {
-                    State = SubscriptionStateChange.SubscriptionState.Active,
-                    RateLimit = rateLimit,
-                    SubscriberID = dbSubscription.ID
-                };
-                // ---------------------------------------------------
+                //// -------------- SHOULD DELETE ----------------------
+                //return new SubscriptionStateChange()
+                //{
+                //    State = SubscriptionStateChange.SubscriptionState.Active,
+                //    RateLimit = rateLimit,
+                //    SubscriberID = dbSubscription.ID
+                //};
+                //// ---------------------------------------------------
                 // check for non-quota
                 if (!dbSubscription.Service.QuotaType.HasValue)
                     return new SubscriptionStateChange()
