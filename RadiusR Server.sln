@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.24720.0
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.31112.23
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius", "RezaB.Radius\RezaB.Radius.csproj", "{0FA28F13-2F42-4FF8-922B-0F99410B1EC0}"
 EndProject
@@ -12,6 +12,10 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RadiusRServerTest", "RadPlay\RadiusRServerTest.csproj", "{A765DF4D-1F94-4894-AB75-DE9576585CAE}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Threading", "RezaB.Threading\RezaB.Threading.csproj", "{500EFAAF-9D30-407A-93CB-6EC4BC99B9BA}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius.PacketStructure", "RezaB.Radius.PacketStructure\RezaB.Radius.PacketStructure.csproj", "{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius.Server", "RezaB.Radius.Server\RezaB.Radius.Server.csproj", "{CDAAD9DF-E816-414E-857D-6E31897C0369}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,8 +43,19 @@ Global
 		{500EFAAF-9D30-407A-93CB-6EC4BC99B9BA}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{500EFAAF-9D30-407A-93CB-6EC4BC99B9BA}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{500EFAAF-9D30-407A-93CB-6EC4BC99B9BA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {42EBC527-E586-4779-9F1C-2D77D4DD3CAE}
 	EndGlobalSection
 EndGlobal

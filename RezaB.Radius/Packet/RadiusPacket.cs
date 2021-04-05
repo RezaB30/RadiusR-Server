@@ -27,7 +27,7 @@ namespace RezaB.Radius.Packet
         private static Logger logger = LogManager.GetLogger("console");
         //private static Logger tempLogger = LogManager.GetLogger("Temp");
 
-        protected NasClientCredentials _nasClientCredentials;
+        protected NasClientCredentials _nasClientCredentials { get; set; }
         public MessageTypes Code { get; protected set; }
 
         public byte Identifier { get; protected set; }
