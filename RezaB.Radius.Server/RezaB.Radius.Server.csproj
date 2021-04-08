@@ -40,6 +40,9 @@
     <Reference Include="EntityFramework.SqlServer, Version=6.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089, processorArchitecture=MSIL">
       <HintPath>..\packages\EntityFramework.6.4.4\lib\net45\EntityFramework.SqlServer.dll</HintPath>
     </Reference>
+    <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
+      <HintPath>..\packages\NLog.4.7.9\lib\net45\NLog.dll</HintPath>
+    </Reference>
     <Reference Include="RadiusR.DB, Version=1.2.4.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\RadiusR.DB.1.2.4\lib\net472\RadiusR.DB.dll</HintPath>
     </Reference>
@@ -51,7 +54,13 @@
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.DataAnnotations" />
+    <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.Runtime.Caching" />
+    <Reference Include="System.Runtime.Serialization" />
+    <Reference Include="System.ServiceModel" />
+    <Reference Include="System.Transactions" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
@@ -66,8 +75,13 @@
     <Compile Include="Caching\NASesCache.cs" />
     <Compile Include="Caching\NASNATTypes.cs" />
     <Compile Include="Caching\ServerDefaultsCache.cs" />
+    <Compile Include="Caching\SettingsCache.cs" />
     <Compile Include="Caching\UpdatableSettingsBase.cs" />
+    <Compile Include="Implementations\AuthenticationServer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RadiusServerBase.cs" />
+    <Compile Include="RadiusServerSettings.cs" />
+    <Compile Include="RawIncomingPacket.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\RezaB.Radius.PacketStructure\RezaB.Radius.PacketStructure.csproj">
@@ -81,6 +95,12 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+    <Content Include="NLog.config">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <None Include="NLog.xsd">
+      <SubType>Designer</SubType>
+    </None>
     <None Include="packages.config" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

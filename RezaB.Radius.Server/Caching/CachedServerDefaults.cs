@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.Server.Caching
 {
-    class CachedServerDefaults
+    public class CachedServerDefaults
     {
         public int FramedProtocol { get; private set; }
 

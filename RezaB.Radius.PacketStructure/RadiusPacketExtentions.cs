@@ -9,14 +9,14 @@ namespace RezaB.Radius.PacketStructure
 {
     public partial class RadiusPacket
     {
-        private ulong GetDownloadedBytes()
+        public ulong GetDownloadedBytes()
         {
             var lowerValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctOutputOctets).Value);
             var higherValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctOutputGigawords).Value);
             return GetUInt64FromUInt32(higherValue, lowerValue);
         }
 
-        private ulong GetUploadedBytes()
+        public ulong GetUploadedBytes()
         {
             var lowerValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctInputOctets).Value);
             var higherValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctInputGigawords).Value);
@@ -31,7 +31,7 @@ namespace RezaB.Radius.PacketStructure
             return result;
         }
 
-        private bool IsValidRequest(string secret)
+        public bool IsValidRequest(string secret)
         {
             var toHashBytes = new List<byte>();
             toHashBytes.Add((byte)Code);
@@ -53,6 +53,42 @@ namespace RezaB.Radius.PacketStructure
             var hashedString = Encoding.UTF8.GetString(hashAlgorithm.ComputeHash(toHashBytes.ToArray()));
             var requestAuthenticatorString = Encoding.UTF8.GetString(RequestAuthenticator);
             return hashedString == requestAuthenticatorString;
+        }
+
+        protected byte[] GetUserPasswordBytes(string userPassword, string secret)
+        {
+            var rawPasswordBytes = Encoding.UTF8.GetBytes(userPassword);
+            var paddingCount = 16 - (rawPasswordBytes.Length % 16);
+            var paddingBytes = new byte[paddingCount];
+            paddingBytes.AsParallel().ForAll(b => b = 0);
+            rawPasswordBytes = rawPasswordBytes.Concat(paddingBytes).ToArray();
+            var passwordChunks = rawPasswordBytes.Select((v, i) => new { Index = i, Value = (byte)v }).GroupBy(indexed => indexed.Index / 16).Select(g => g.Select(indexed => indexed.Value).ToArray()).ToArray();
+
+            var hashingAlgorithm = MD5.Create();
+            var key = hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(secret).Concat(RequestAuthenticator).ToArray());
+            var results = new List<byte>();
+            for (int i = 0; i < passwordChunks.Length; i++)
+            {
+                var lastConvertedChunk = new List<byte>();
+                for (int j = 0; j < passwordChunks[i].Length; j++)
+                {
+                    lastConvertedChunk.Add((byte)(passwordChunks[i][j] ^ key[j]));
+                }
+                results.AddRange(lastConvertedChunk);
+                key = hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(secret).Concat(lastConvertedChunk).ToArray());
+            }
+
+            return results.ToArray();
+        }
+
+        public bool HasValidPassword(string userPassword, string secret)
+        {
+            var passwordAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserPassword);
+            if (passwordAttribute == null)
+                return false;
+            var encodedPassword = GetUserPasswordBytes(userPassword, secret);
+            var passwordHash = Convert.ToBase64String(encodedPassword);
+            return passwordHash == passwordAttribute.Value;
         }
     }
 }

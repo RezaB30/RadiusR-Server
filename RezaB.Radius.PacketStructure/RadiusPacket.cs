@@ -144,43 +144,12 @@ namespace RezaB.Radius.PacketStructure
             }
         }
 
-        protected RadiusPacket() { }
-
-        //protected byte[] GetUserPasswordBytes(string userPassword, string secret)
-        //{
-        //    var rawPasswordBytes = Encoding.UTF8.GetBytes(userPassword);
-        //    var paddingCount = 16 - (rawPasswordBytes.Length % 16);
-        //    var paddingBytes = new byte[paddingCount];
-        //    paddingBytes.AsParallel().ForAll(b => b = 0);
-        //    rawPasswordBytes = rawPasswordBytes.Concat(paddingBytes).ToArray();
-        //    var passwordChunks = rawPasswordBytes.Select((v, i) => new { Index = i, Value = (byte)v }).GroupBy(indexed => indexed.Index / 16).Select(g => g.Select(indexed => indexed.Value).ToArray()).ToArray();
-
-        //    var hashingAlgorithm = MD5.Create();
-        //    var key = hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(secret).Concat(RequestAuthenticator).ToArray());
-        //    var results = new List<byte>();
-        //    for (int i = 0; i < passwordChunks.Length; i++)
-        //    {
-        //        var lastConvertedChunk = new List<byte>();
-        //        for (int j = 0; j < passwordChunks[i].Length; j++)
-        //        {
-        //            lastConvertedChunk.Add((byte)(passwordChunks[i][j] ^ key[j]));
-        //        }
-        //        results.AddRange(lastConvertedChunk);
-        //        key = hashingAlgorithm.ComputeHash(Encoding.UTF8.GetBytes(secret).Concat(lastConvertedChunk).ToArray());
-        //    }
-
-        //    return results.ToArray();
-        //}
-
-        //protected bool HasValidPassword(Subscription dbSubscription, string secret)
-        //{
-        //    var passwordAttribute = Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserPassword);
-        //    if (passwordAttribute == null)
-        //        return false;
-        //    var encodedPassword = GetUserPasswordBytes(dbSubscription.RadiusPassword, secret);
-        //    var passwordHash = Convert.ToBase64String(encodedPassword);
-        //    return passwordHash == passwordAttribute.Value;
-        //}
+        public RadiusPacket(RadiusPacket requestPacket)
+        {
+            Identifier = requestPacket.Identifier;
+            RequestAuthenticator = RequestAuthenticator;
+            Attributes = new List<RadiusAttribute>();
+        }
 
         //public RadiusPacket GetResponse(DbConnection connection, PacketProcessingOptions options)
         //{
@@ -380,7 +349,7 @@ namespace RezaB.Radius.PacketStructure
         //                break;
         //        }
         //    }
-            
+
         //    return null;
         //}
     }

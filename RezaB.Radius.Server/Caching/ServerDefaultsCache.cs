@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.Server.Caching
 {
-    class ServerDefaultsCache : UpdatableSettingsBase
+    public class ServerDefaultsCache : UpdatableSettingsBase
     {
         private ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
         private CachedServerDefaults ServerSettings { get; set; }

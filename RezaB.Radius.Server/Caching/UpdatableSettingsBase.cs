@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.Server.Caching
 {
-    abstract class UpdatableSettingsBase : IUpdatableSettings
+    public abstract class UpdatableSettingsBase : IUpdatableSettings
     {
         public bool IsLoaded
         {
@@ -29,6 +29,14 @@ namespace RezaB.Radius.Server.Caching
         public TimeSpan RefreshRate { get; set; }
 
         public DateTime? LastUpdate { get; protected set; }
+
+        public bool HasExpired
+        {
+            get
+            {
+                return !IsLoaded || DateTime.Now - LastUpdate > RefreshRate;
+            }
+        }
 
     }
 }

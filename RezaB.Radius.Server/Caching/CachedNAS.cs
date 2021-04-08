@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.Server.Caching
 {
-    class CachedNAS
+    public class CachedNAS
     {
         public IPAddress NASIP { get; protected set; }
 

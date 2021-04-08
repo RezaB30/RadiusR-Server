@@ -10,7 +10,7 @@ using System.Data.Entity;
 
 namespace RezaB.Radius.Server.Caching
 {
-    class NASesCache : UpdatableSettingsBase
+    public class NASesCache : UpdatableSettingsBase
     {
         private ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
         private IDictionary<IPAddress, CachedNAS> InternalDictionary { get; set; }

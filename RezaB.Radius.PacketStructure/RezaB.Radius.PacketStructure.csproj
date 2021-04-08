@@ -72,7 +72,7 @@
     <Compile Include="ChangeOfAuthorizationPacket.cs" />
     <Compile Include="DisconnectPacket.cs" />
     <Compile Include="RadiusPacket.cs" />
-    <Compile Include="RadiusPacketInternal.cs" />
+    <Compile Include="RadiusPacketExtentions.cs" />
     <Compile Include="Vendors\MicrosoftAttribute.cs" />
     <Compile Include="Vendors\MikrotikAttribute.cs" />
     <Compile Include="Vendors\RedBackAttribute.cs" />
