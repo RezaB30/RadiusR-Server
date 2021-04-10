@@ -7,6 +7,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Data.Entity;
+using System.Data.Entity.Core.EntityClient;
 
 namespace RezaB.Radius.Server.Caching
 {
@@ -15,7 +16,7 @@ namespace RezaB.Radius.Server.Caching
         private ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
         private IDictionary<IPAddress, CachedNAS> InternalDictionary { get; set; }
 
-        public NASesCache(TimeSpan refreshRate) : base(refreshRate)
+        public NASesCache(TimeSpan refreshRate, string connectionString) : base(refreshRate, connectionString)
         {
             Update();
         }
@@ -43,7 +44,7 @@ namespace RezaB.Radius.Server.Caching
 
         public override void Update()
         {
-            using (RadiusREntities db = new RadiusREntities())
+            using (RadiusREntities db = new RadiusREntities(new EntityConnection(ConnectionString)))
             {
                 Dictionary<IPAddress, CachedNAS> nasList;
                 nasList = db.NAS.Include(nas => nas.NASVerticalIPMaps).Include(nas => nas.NASNetmaps).Include(nas => nas.NASExpiredPools).ToArray().Select(nas => new CachedNAS(nas)).ToDictionary(c => c.NASIP, c => c);

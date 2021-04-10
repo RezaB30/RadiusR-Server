@@ -39,11 +39,12 @@ namespace RezaB.Radius.Server
             try
             {
                 if (ServerCache == null)
-                    ServerCache = new SettingsCache();
+                    ServerCache = new SettingsCache(settings.ConnectionString);
             }
             catch (Exception ex)
             {
                 mainLogger.Fatal(ex, "Error loading settings cache.");
+                return;
             }
 
             // initialize thread pool
@@ -170,7 +171,7 @@ namespace RezaB.Radius.Server
                 RadiusPacket responsePacket = null;
                 try
                 {
-                    responsePacket = CreateResponse(rawDataItem.DbConnection, packet, foundNAS.Secret);
+                    responsePacket = CreateResponse(rawDataItem.DbConnection, packet, foundNAS, ServerCache.ServerSettingsCache.GetSettings());
                     if (responsePacket == null)
                     {
                         processingLogger.Warn("Bad request. Ignored!");
@@ -183,8 +184,8 @@ namespace RezaB.Radius.Server
                 }
 
                 // sending response
-                processingLogger.Trace(responsePacket.GetLog());
                 var toSendBytes = responsePacket.GetBytes(foundNAS.Secret);
+                processingLogger.Trace(responsePacket.GetLog());
                 processingLogger.Trace($"Sending response to {rawDataItem.Item.EndPoint} ...");
                 try
                 {
@@ -204,6 +205,6 @@ namespace RezaB.Radius.Server
             }
         }
 
-        protected abstract RadiusPacket CreateResponse(DbConnection connection, RadiusPacket packet, string secret);
+        protected abstract RadiusPacket CreateResponse(DbConnection connection, RadiusPacket packet, CachedNAS cachedNAS, CachedServerDefaults cachedServerDefaults);
     }
 }

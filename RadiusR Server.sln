@@ -17,6 +17,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius.PacketStructur
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius.Server", "RezaB.Radius.Server\RezaB.Radius.Server.csproj", "{CDAAD9DF-E816-414E-857D-6E31897C0369}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RezaB.Radius.Server.Tester", "RezaB.Radius.Server.Tester\RezaB.Radius.Server.Tester.csproj", "{68DE69E4-84ED-4A2A-89C7-065CB684B2DC}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -51,6 +53,10 @@ Global
 		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CDAAD9DF-E816-414E-857D-6E31897C0369}.Release|Any CPU.Build.0 = Release|Any CPU
+		{68DE69E4-84ED-4A2A-89C7-065CB684B2DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{68DE69E4-84ED-4A2A-89C7-065CB684B2DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{68DE69E4-84ED-4A2A-89C7-065CB684B2DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{68DE69E4-84ED-4A2A-89C7-065CB684B2DC}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -144,12 +144,15 @@ namespace RezaB.Radius.PacketStructure
             }
         }
 
-        public RadiusPacket(RadiusPacket requestPacket)
+        public RadiusPacket(RadiusPacket requestPacket, MessageTypes messageType)
         {
+            Code = messageType;
             Identifier = requestPacket.Identifier;
-            RequestAuthenticator = RequestAuthenticator;
+            RequestAuthenticator = requestPacket.RequestAuthenticator;
             Attributes = new List<RadiusAttribute>();
         }
+
+        protected RadiusPacket() { }
 
         //public RadiusPacket GetResponse(DbConnection connection, PacketProcessingOptions options)
         //{

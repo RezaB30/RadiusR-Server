@@ -16,8 +16,9 @@ namespace RezaB.Radius.Server.Caching
             }
         }
 
-        public UpdatableSettingsBase(TimeSpan refreshRate)
+        public UpdatableSettingsBase(TimeSpan refreshRate, string connectionString)
         {
+            ConnectionString = connectionString;
             RefreshRate = refreshRate;
         }
 
@@ -29,6 +30,8 @@ namespace RezaB.Radius.Server.Caching
         public TimeSpan RefreshRate { get; set; }
 
         public DateTime? LastUpdate { get; protected set; }
+
+        public string ConnectionString { get; protected set; }
 
         public bool HasExpired
         {

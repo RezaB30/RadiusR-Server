@@ -19,11 +19,11 @@ namespace RezaB.Radius.Server.Caching
 
         private Thread RefresherThread { get; set; }
 
-        public SettingsCache()
+        public SettingsCache(string connectionString)
         {
-            ServerSettingsCache = new ServerDefaultsCache(TimeSpan.FromMinutes(5));
+            ServerSettingsCache = new ServerDefaultsCache(TimeSpan.FromMinutes(5), connectionString);
             ServerSettingsCache.RefreshRate = ServerSettingsCache.GetSettings().RadiusSettingsRefreshInterval;
-            NASListCache = new NASesCache(ServerSettingsCache.GetSettings().NASListRefreshInterval);
+            NASListCache = new NASesCache(ServerSettingsCache.GetSettings().NASListRefreshInterval, connectionString);
             // refresher
             RefresherThread = new Thread(new ThreadStart(Refresh));
             RefresherThread.IsBackground = true;
