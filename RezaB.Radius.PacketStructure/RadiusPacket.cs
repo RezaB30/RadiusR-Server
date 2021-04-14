@@ -36,9 +36,9 @@ namespace RezaB.Radius.PacketStructure
         {
             get
             {
-                var authenticator = RequestAuthenticator;
-                if (Code == MessageTypes.AccessAccept || Code == MessageTypes.AccessReject)
-                    authenticator = ResponseAuthenticator;
+                var authenticator = ResponseAuthenticator ?? RequestAuthenticator;
+                //if (Code == MessageTypes.AccessAccept || Code == MessageTypes.AccessReject)
+                //    authenticator = ResponseAuthenticator;
                 if (authenticator == null)
                     return "Not Set";
                 StringBuilder result = new StringBuilder("0x");

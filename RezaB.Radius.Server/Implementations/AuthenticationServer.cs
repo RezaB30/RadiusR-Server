@@ -20,88 +20,6 @@ namespace RezaB.Radius.Server.Implementations
             ThreadNamePrefix = "AUTH";
         }
 
-        //protected override void ProcessPacket(ConnectableItem<RawIncomingPacket> rawDataItem)
-        //{
-        //    try
-        //    {
-        //        // find NAS
-        //        var foundNAS = ServerCache.NASListCache.GetCachedNAS(rawDataItem.Item.EndPoint.Address);
-        //        if (foundNAS == null)
-        //        {
-        //            processingLogger.Info("Invalid NAS IP. Ignored!");
-        //            return;
-        //        }
-        //        // parse packet
-        //        RadiusPacket packet = null;
-        //        try
-        //        {
-        //            packet = new RadiusPacket(rawDataItem.Item.Data);
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            processingLogger.Warn(ex, "Error in processing packet.");
-        //            return;
-        //        }
-
-        //        processingLogger.Trace(packet.GetLog());
-
-        //        // check identifiers to ignore duplicate messages
-        //        {
-        //            var previousIdentifier = identifierHistory[rawDataItem.Item.EndPoint.ToString()] as string;
-        //            if (previousIdentifier == packet.Identifier.ToString())
-        //            {
-        //                processingLogger.Trace($"Same Identifier {packet.Identifier}... Ignored!");
-        //                return;
-        //            }
-        //            identifierHistory.Set(rawDataItem.Item.EndPoint.ToString(), packet.Identifier.ToString(), DateTime.UtcNow.AddSeconds(5));
-        //        }
-
-        //        // check message code
-        //        if (packet.Code != MessageTypes.AccessRequest)
-        //        {
-        //            processingLogger.Trace("Invalid message code. Ignored!");
-        //            return;
-        //        }
-
-        //        // create response packet
-        //        processingLogger.Trace("Creating response packet...");
-        //        RadiusPacket responsePacket = null;
-        //        try
-        //        {
-        //            responsePacket = CreateResponse(rawDataItem.DbConnection, packet, foundNAS.Secret);
-        //            if (responsePacket == null)
-        //            {
-        //                processingLogger.Warn("Bad request. Ignored!");
-        //            }
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            processingLogger.Warn(ex, "Error creating response packet.");
-        //            return;
-        //        }
-
-        //        // sending response
-        //        processingLogger.Trace(responsePacket.GetLog());
-        //        var toSendBytes = responsePacket.GetBytes(foundNAS.Secret);
-        //        processingLogger.Trace($"Sending response to {rawDataItem.Item.EndPoint} ...");
-        //        try
-        //        {
-        //            _server.Send(toSendBytes, toSendBytes.Length, rawDataItem.Item.EndPoint);
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            processingLogger.Warn(ex, "Error sending response packet.");
-        //            return;
-        //        }
-        //        processingLogger.Trace("Response sent.");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        processingLogger.Error(ex, "General error.");
-        //        return;
-        //    }
-        //}
-
         protected override RadiusPacket CreateResponse(DbConnection connection, RadiusPacket packet, CachedNAS cachedNAS, CachedServerDefaults cachedServerDefaults)
         {
             using (RadiusREntities db = new RadiusREntities(connection))
@@ -129,7 +47,7 @@ namespace RezaB.Radius.Server.Implementations
                 }
                 // check simultaneous connections
                 processingLogger.Trace("Checking simultaneous use.");
-                if (radiusUser.LastLogin.HasValue && (!radiusUser.LastLogout.HasValue || radiusUser.LastLogin < radiusUser.LastLogout))
+                if (radiusUser.LastInterimUpdate.HasValue && (!radiusUser.LastLogout.HasValue || radiusUser.LastInterimUpdate > radiusUser.LastLogout))
                 {
                     return new RadiusPacket(packet, MessageTypes.AccessReject);
                 }
@@ -138,7 +56,7 @@ namespace RezaB.Radius.Server.Implementations
                 bool usesExpiredPool = false;
                 // check expiration
                 processingLogger.Trace("Checking expiration date.");
-                if (!radiusUser.ExpirationDate.HasValue || radiusUser.ExpirationDate.Value.Add(ServerCache.ServerSettingsCache.GetSettings().DailyDisconnectionTime) < DateTime.Now)
+                if (!radiusUser.ExpirationDate.HasValue || radiusUser.ExpirationDate.Value < DateTime.Now || radiusUser.IsHardQuotaExpired == true)
                 {
                     // set expiration pool if available
                     if (cachedNAS.ExpiredPools?.Any() == true)
@@ -178,7 +96,8 @@ namespace RezaB.Radius.Server.Implementations
                 responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.AcctInterimInterval, ServerCache.ServerSettingsCache.GetSettings().AccountingInterimInterval));
 
                 // set last login
-                radiusUser.LastLogin = DateTime.Now;
+                radiusUser.LastInterimUpdate = DateTime.Now;
+                radiusUser.NASIP = cachedNAS.NASIP.ToString();
                 db.SaveChanges();
 
                 // return response

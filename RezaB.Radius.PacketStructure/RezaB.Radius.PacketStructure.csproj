@@ -69,8 +69,6 @@
     <Compile Include="RadiusAttribute.cs" />
     <Compile Include="RadiusAttributeConvertor.cs" />
     <Compile Include="DynamicAuthorizationExtentionPacket.cs" />
-    <Compile Include="ChangeOfAuthorizationPacket.cs" />
-    <Compile Include="DisconnectPacket.cs" />
     <Compile Include="RadiusPacket.cs" />
     <Compile Include="RadiusPacketExtentions.cs" />
     <Compile Include="Vendors\MicrosoftAttribute.cs" />

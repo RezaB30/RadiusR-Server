@@ -87,6 +87,10 @@
     </None>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\RezaB.Radius.PacketStructure\RezaB.Radius.PacketStructure.csproj">
+      <Project>{C4A59BAE-968C-41CD-85FD-276E2BEEB9A7}</Project>
+      <Name>RezaB.Radius.PacketStructure</Name>
+    </ProjectReference>
     <ProjectReference Include="..\RezaB.Radius.Server\RezaB.Radius.Server.csproj">
       <Project>{cdaad9df-e816-414e-857d-6e31897c0369}</Project>
       <Name>RezaB.Radius.Server</Name>

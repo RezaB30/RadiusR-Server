@@ -11,6 +11,8 @@ namespace RezaB.Radius.PacketStructure
     {
         public ulong GetDownloadedBytes()
         {
+            if (!Attributes.Any(attr => attr.Type == AttributeType.AcctOutputOctets))
+                return 0;
             var lowerValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctOutputOctets).Value);
             var higherValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctOutputGigawords).Value);
             return GetUInt64FromUInt32(higherValue, lowerValue);
@@ -18,6 +20,8 @@ namespace RezaB.Radius.PacketStructure
 
         public ulong GetUploadedBytes()
         {
+            if (!Attributes.Any(attr => attr.Type == AttributeType.AcctInputOctets))
+                return 0;
             var lowerValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctInputOctets).Value);
             var higherValue = uint.Parse(Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctInputGigawords).Value);
             return GetUInt64FromUInt32(higherValue, lowerValue);

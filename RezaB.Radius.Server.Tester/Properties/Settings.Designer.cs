@@ -26,27 +26,27 @@ namespace RezaB.Radius.Server.Tester.Properties {
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("1812")]
-        public int Port {
+        public int AuthPort {
             get {
-                return ((int)(this["Port"]));
+                return ((int)(this["AuthPort"]));
             }
         }
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("2")]
-        public int ThreadCount {
+        public int AuthThreadCount {
             get {
-                return ((int)(this["ThreadCount"]));
+                return ((int)(this["AuthThreadCount"]));
             }
         }
         
         [global::System.Configuration.ApplicationScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
         [global::System.Configuration.DefaultSettingValueAttribute("50")]
-        public int PoolCapacity {
+        public int AuthPoolCapacity {
             get {
-                return ((int)(this["PoolCapacity"]));
+                return ((int)(this["AuthPoolCapacity"]));
             }
         }
         
@@ -74,6 +74,33 @@ namespace RezaB.Radius.Server.Tester.Properties {
         public string ConnectionString {
             get {
                 return ((string)(this["ConnectionString"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("1813")]
+        public int AccPort {
+            get {
+                return ((int)(this["AccPort"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("5")]
+        public int AccThreadCount {
+            get {
+                return ((int)(this["AccThreadCount"]));
+            }
+        }
+        
+        [global::System.Configuration.ApplicationScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("100")]
+        public int AccPoolCapacity {
+            get {
+                return ((int)(this["AccPoolCapacity"]));
             }
         }
     }

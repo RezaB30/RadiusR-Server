@@ -18,15 +18,15 @@ namespace RezaB.Radius.Server.Caching
 
         public TimeSpan NASListRefreshInterval { get; private set; }
 
-        public TimeSpan DailyDisconnectionTime { get; private set; }
+        //public TimeSpan DailyDisconnectionTime { get; private set; }
 
-        public CachedServerDefaults(int framedProtocol, int accountingInterimInterval, TimeSpan radiusSettingsRefreshInterval, TimeSpan nasListRefreshInterval, TimeSpan dailyDisconnectionTime)
+        public CachedServerDefaults(int framedProtocol, int accountingInterimInterval, TimeSpan radiusSettingsRefreshInterval, TimeSpan nasListRefreshInterval)
         {
             FramedProtocol = framedProtocol;
             AccountingInterimInterval = accountingInterimInterval;
             RadiusSettingsRefreshInterval = radiusSettingsRefreshInterval;
             NASListRefreshInterval = nasListRefreshInterval;
-            DailyDisconnectionTime = dailyDisconnectionTime;
+            //DailyDisconnectionTime = dailyDisconnectionTime;
         }
 
         public CachedServerDefaults(IEnumerable<RadiusR.DB.RadiusDefault> dbSettings)
@@ -36,12 +36,11 @@ namespace RezaB.Radius.Server.Caching
             AccountingInterimInterval = Convert.ToInt32(list["AccountingInterimInterval"]);
             RadiusSettingsRefreshInterval = TimeSpan.ParseExact(list["RadiusSettingsRefreshInterval"], "hh\\:mm\\:ss", CultureInfo.InvariantCulture);
             NASListRefreshInterval = TimeSpan.ParseExact(list["NASListRefreshInterval"], "hh\\:mm\\:ss", CultureInfo.InvariantCulture);
-            DailyDisconnectionTime = TimeSpan.ParseExact(list["DailyDisconnectionTime"], "hh\\:mm\\:ss", CultureInfo.InvariantCulture);
         }
 
         public CachedServerDefaults Clone()
         {
-            return new CachedServerDefaults(FramedProtocol, AccountingInterimInterval, RadiusSettingsRefreshInterval, NASListRefreshInterval, DailyDisconnectionTime);
+            return new CachedServerDefaults(FramedProtocol, AccountingInterimInterval, RadiusSettingsRefreshInterval, NASListRefreshInterval);
         }
     }
 }

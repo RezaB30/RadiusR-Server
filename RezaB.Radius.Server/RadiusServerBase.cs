@@ -27,14 +27,15 @@ namespace RezaB.Radius.Server
         private CustomThreadPool<RawIncomingPacket> _workPool;
         private Thread listeningThread;
         protected MemoryCache identifierHistory = new MemoryCache("identifiers");
+        private IEnumerable<MessageTypes> AcceptableMessageTypes { get; set; }
 
         protected string ThreadNamePrefix { get; set; }
 
         protected SettingsCache ServerCache { get; set; }
 
-        public virtual void Start(RadiusServerSettings settings)
+        public virtual void Start(RadiusServerSettings settings, IEnumerable<MessageTypes> acceptableMessageTypes)
         {
-            Thread.CurrentThread.Name = $"{ThreadNamePrefix}-main";
+            AcceptableMessageTypes = acceptableMessageTypes.ToArray();
             isStopped = false;
             try
             {
@@ -160,11 +161,15 @@ namespace RezaB.Radius.Server
                 }
 
                 // check message code
-                if (packet.Code != MessageTypes.AccessRequest)
+                if (!AcceptableMessageTypes.Contains(packet.Code))
                 {
                     processingLogger.Trace("Invalid message code. Ignored!");
                     return;
                 }
+
+                // opening db connection if closed
+                if (rawDataItem.DbConnection.State != System.Data.ConnectionState.Open)
+                    rawDataItem.DbConnection.Open();
 
                 // create response packet
                 processingLogger.Trace("Creating response packet...");
@@ -175,6 +180,7 @@ namespace RezaB.Radius.Server
                     if (responsePacket == null)
                     {
                         processingLogger.Warn("Bad request. Ignored!");
+                        return;
                     }
                 }
                 catch (Exception ex)
