@@ -14,6 +14,8 @@ namespace RezaB.Radius.Server.Caching
 
         public string Secret { get; protected set; }
 
+        public int IncomingPort { get; protected set; }
+
         public int NasTypeID { get; protected set; }
 
         public int NATType { get; protected set; }
@@ -80,6 +82,7 @@ namespace RezaB.Radius.Server.Caching
         {
             NASIP = IPAddress.Parse(nas.IP);
             Secret = nas.Secret;
+            IncomingPort = nas.RadiusIncomingPort;
             NasTypeID = nas.TypeID;
             NATType = nas.NATType;
             Netmaps = nas.NATType == (short)NASNATTypes.Horizontal ? nas.NASNetmaps.Select(netmap => new NasNetmap(netmap.LocalIPSubnet, netmap.RealIPSubnet, netmap.PortCount, netmap.PreserveLastByte)) : null;
@@ -139,6 +142,7 @@ namespace RezaB.Radius.Server.Caching
             return new CachedNAS()
             {
                 NASIP = new IPAddress(NASIP.GetAddressBytes()),
+                IncomingPort = IncomingPort,
                 NasTypeID = NasTypeID,
                 NATType = NATType,
                 Secret = Secret,

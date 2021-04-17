@@ -47,7 +47,7 @@ namespace RezaB.Radius.Server.Caching
             using (RadiusREntities db = new RadiusREntities(new EntityConnection(ConnectionString)))
             {
                 Dictionary<IPAddress, CachedNAS> nasList;
-                nasList = db.NAS.Include(nas => nas.NASVerticalIPMaps).Include(nas => nas.NASNetmaps).Include(nas => nas.NASExpiredPools).ToArray().Select(nas => new CachedNAS(nas)).ToDictionary(c => c.NASIP, c => c);
+                nasList = db.NAS.Where(nas => !nas.Disabled).Include(nas => nas.NASVerticalIPMaps).Include(nas => nas.NASNetmaps).Include(nas => nas.NASExpiredPools).ToArray().Select(nas => new CachedNAS(nas)).ToDictionary(c => c.NASIP, c => c);
 
                 if (locker.TryEnterWriteLock(10000))
                 {

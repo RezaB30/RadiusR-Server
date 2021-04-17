@@ -6,6 +6,7 @@ using RezaB.Radius.Server.Implementations.IntermediateContainers;
 using System;
 using System.Collections.Generic;
 using System.Data.Common;
+using System.Data.SqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -25,7 +26,7 @@ namespace RezaB.Radius.Server.Implementations
             var AccountingStatusTypeAttribute = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.AcctStatusType);
             var usernameAttribute = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.UserName);
             var framedIPAddressAttribute = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.FramedIPAddress);
-            if (string.IsNullOrEmpty(packet.UniqueSessionId) || AccountingStatusTypeAttribute == null || usernameAttribute == null)
+            if (AccountingStatusTypeAttribute == null || usernameAttribute == null)
             {
                 return null;
             }
@@ -40,6 +41,13 @@ namespace RezaB.Radius.Server.Implementations
             }
             var accountingStatusType = (AcctStatusType)accountingStatusTypeValue;
             var username = usernameAttribute.Value;
+            if (accountingStatusType == AcctStatusType.Start || accountingStatusType == AcctStatusType.Stop || accountingStatusType == AcctStatusType.InterimUpdate)
+            {
+                if (string.IsNullOrEmpty(packet.UniqueSessionId))
+                {
+                    return null;
+                }
+            }
 
             // packet is valid
             var responsePacket = new RadiusPacket(packet, MessageTypes.AccountingResponse);
@@ -229,7 +237,17 @@ namespace RezaB.Radius.Server.Implementations
                             // return response
                             return responsePacket;
                         }
+                    case AcctStatusType.AccountingOn:
                     case AcctStatusType.AccountingOff:
+                        {
+                            // temp value for warning
+                            var temp = new RadiusAuthorization()
+                            {
+                                LastLogout = null
+                            };
+                            db.Database.ExecuteSqlCommand("UPDATE RadiusAuthorization SET LastLogout = @currentTime WHERE NASIP = @nasIP;", new[] { new SqlParameter("@currentTime", DateTime.Now), new SqlParameter("@nasIP", cachedNAS.NASIP) });
+                            return responsePacket;
+                        }
                     default:
                         return null;
                 }
