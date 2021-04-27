@@ -1,5 +1,7 @@
 ﻿using NLog;
 using RadiusR.DB;
+using RadiusR.DB.ModelExtentions;
+using RadiusR.SMS;
 using RezaB.Radius.PacketStructure;
 using RezaB.Radius.Server.Caching;
 using RezaB.Scheduling;
@@ -13,18 +15,12 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.DAEHelper.Tasks.DATasks
 {
-    public class StateChangeDisconnects : DynamicAccountingTask
+    public class ExpirationDisconnects : DynamicAccountingTask
     {
-        private static Logger logger = LogManager.GetLogger("state-change-disconnect");
-        private static Logger dbLogger = LogManager.GetLogger("state-change-disconnect-DB");
+        private static Logger logger = LogManager.GetLogger("expiration-disconnects");
+        private static Logger dbLogger = LogManager.GetLogger("expiration-disconnects-DB");
 
-        private short[] _disconnectStates = new short[]
-        {
-            (short)RadiusR.DB.Enums.CustomerState.Cancelled,
-            (short)RadiusR.DB.Enums.CustomerState.Disabled
-        };
-
-        public StateChangeDisconnects(NASesCache servers, int port, string IP = null) : base(servers, port, IP) { }
+        public ExpirationDisconnects(NASesCache servers, int port, string IP = null) : base(servers, port, IP) { }
 
         public override bool Run()
         {
@@ -33,7 +29,7 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
             {
                 // prepare query
                 db.Database.Log = dbLogger.Trace;
-                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => _disconnectStates.Contains(s.Subscription.State) && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout) || s.IsEnabled));
+                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate <= DateTime.Now && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
                 long currentId = 0;
                 using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
                 {
@@ -56,7 +52,7 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                             }
                             currentId = currentAuthRecord.SubscriptionID;
 
-                            if (!string.IsNullOrEmpty(currentAuthRecord.NASIP) && (currentAuthRecord.LastInterimUpdate.HasValue && !currentAuthRecord.LastLogout.HasValue) || (currentAuthRecord.LastInterimUpdate > currentAuthRecord.LastLogout))
+                            if (!string.IsNullOrEmpty(currentAuthRecord.NASIP))
                             {
                                 IPAddress currentNASIP;
                                 CachedNAS nas = null;
@@ -77,13 +73,39 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                                     }
                                 }
                             }
-                            try
+                            else
                             {
-                                db.Database.ExecuteSqlCommand("UPDATE RadiusAuthorization SET IsEnabled = 0 WHERE SubscriptionID = @subId;", new[] { new SqlParameter("@subId", currentAuthRecord.SubscriptionID) });
+                                try
+                                {
+                                    db.Database.ExecuteSqlCommand("UPDATE RadiusAuthorization SET LastLogout = @logoutTime WHERE SubscriptionID = @subId;", new[] { new SqlParameter("@subId", currentAuthRecord.SubscriptionID), new SqlParameter("@logoutTime", DateTime.Now) });
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.Warn(ex, $"Could not update authorization record with subscription id [{currentAuthRecord.SubscriptionID}].");
+                                }
                             }
-                            catch (Exception ex)
+                            // send debt disconnect SMS
+                            SMSService smsService = new SMSService();
+                            var sentSMS = smsService.SendSubscriberSMS(currentAuthRecord.Subscription, RadiusR.DB.Enums.SMSType.DebtDisconnection);
+                            using (RadiusREntities smsDb = new RadiusREntities())
                             {
-                                logger.Warn(ex, $"Could not update authorization record with subscription id [{currentAuthRecord.SubscriptionID}].");
+                                smsDb.Database.Log = dbLogger.Trace;
+                                smsDb.SMSArchives.AddSafely(sentSMS);
+                                var currentRadiusSMS = smsDb.RadiusSMS.FirstOrDefault(rs => rs.SubscriptionID == currentAuthRecord.SubscriptionID && rs.SMSTypeID == (short)RadiusR.DB.Enums.SMSType.DebtDisconnection);
+                                if (currentRadiusSMS != null)
+                                {
+                                    currentRadiusSMS.Date = DateTime.Now;
+                                }
+                                else
+                                {
+                                    smsDb.RadiusSMS.Add(new RadiusSMS()
+                                    {
+                                        Date = DateTime.Now,
+                                        SMSTypeID = (short)RadiusR.DB.Enums.SMSType.DebtDisconnection,
+                                        SubscriptionID = currentAuthRecord.SubscriptionID
+                                    });
+                                }
+                                smsDb.SaveChanges();
                             }
                         }
                         catch (Exception ex)

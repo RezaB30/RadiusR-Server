@@ -17,6 +17,8 @@ namespace RezaB.Radius.DAEHelper.TestUnit
             Console.WriteLine("1.(to be added).");
             Console.WriteLine("2.state-change-disconnect Task.");
             Console.WriteLine("3.expired-disconnect Task.");
+            Console.WriteLine("4.quota-tasks Task.");
+
             var key = Console.ReadKey();
             AbortableTask task = null;
             if (key.Key != ConsoleKey.Escape)
@@ -33,7 +35,14 @@ namespace RezaB.Radius.DAEHelper.TestUnit
                         break;
                     case '3':
                         {
-                            task = new Tasks.DATasks.ExpiredDisconnects(serversCache, 3799, "10.180.0.2");
+                            task = new Tasks.DATasks.ExpirationDisconnects(serversCache, 3799, "10.180.0.2");
+                            Thread temp = new Thread(new ThreadStart(() => task.Run()));
+                            temp.Start();
+                        }
+                        break;
+                    case '4':
+                        {
+                            task = new Tasks.DATasks.QuotaTasks(serversCache, 3799, "10.180.0.2");
                             Thread temp = new Thread(new ThreadStart(() => task.Run()));
                             temp.Start();
                         }

@@ -2,10 +2,8 @@
 using RadiusR.DB;
 using RezaB.Radius.PacketStructure;
 using RezaB.Radius.Server.Caching;
-using RezaB.Scheduling;
 using System;
 using System.Collections.Generic;
-using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -13,12 +11,12 @@ using System.Threading.Tasks;
 
 namespace RezaB.Radius.DAEHelper.Tasks.DATasks
 {
-    public class ExpiredDisconnects : DynamicAccountingTask
+    public class ExpirationReconnects : DynamicAccountingTask
     {
-        private static Logger logger = LogManager.GetLogger("expired-disconnect");
-        private static Logger dbLogger = LogManager.GetLogger("expired-disconnect-DB");
+        private static Logger logger = LogManager.GetLogger("expiration-reconnects");
+        private static Logger dbLogger = LogManager.GetLogger("expiration-reconnects-DB");
 
-        public ExpiredDisconnects(NASesCache servers, int port, string IP = null) : base(servers, port, IP) { }
+        public ExpirationReconnects(NASesCache servers, int port, string IP = null) : base(servers, port, IP) { }
 
         public override bool Run()
         {
@@ -27,11 +25,10 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
             {
                 // prepare query
                 db.Database.Log = dbLogger.Trace;
-                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate <= DateTime.Now && (s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout));
+                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate > DateTime.Now && s.UsingExpiredPool && s.Subscription.Service.QuotaType != (short)RadiusR.DB.Enums.QuotaType.HardQuota && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
                 long currentId = 0;
                 using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
                 {
-
                     while (true)
                     {
                         if (_isAborted)
@@ -49,38 +46,24 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                                 return true;
                             }
                             currentId = currentAuthRecord.SubscriptionID;
-
+                            // server from cache
+                            CachedNAS nas = null;
                             if (!string.IsNullOrEmpty(currentAuthRecord.NASIP))
                             {
                                 IPAddress currentNASIP;
-                                CachedNAS nas = null;
                                 if (IPAddress.TryParse(currentAuthRecord.NASIP, out currentNASIP))
                                 {
                                     nas = DAServers.GetCachedNAS(currentNASIP);
-                                    if (nas != null)
-                                    {
-                                        try
-                                        {
-                                            DAClient.Send(new IPEndPoint(nas.NASIP, nas.IncomingPort), new DynamicAuthorizationExtentionPacket(MessageTypes.DisconnectRequest, new[] { new RadiusAttribute(AttributeType.UserName, currentAuthRecord.Username) }), nas.Secret);
-                                        }
-                                        catch (Exception ex)
-                                        {
-                                            logger.Warn(ex, $"Could not disconnect [{currentAuthRecord.Username}] from [{currentAuthRecord.NASIP}].");
-                                            continue;
-                                        }
-                                    }
                                 }
                             }
-                            else
+                            // nas update
+                            try
                             {
-                                try
-                                {
-                                    db.Database.ExecuteSqlCommand("UPDATE RadiusAuthorization SET LastLogout = @logoutTime WHERE SubscriptionID = @subId;", new[] { new SqlParameter("@subId", currentAuthRecord.SubscriptionID), new SqlParameter("@logoutTime", DateTime.Now) });
-                                }
-                                catch (Exception ex)
-                                {
-                                    logger.Warn(ex, $"Could not update authorization record with subscription id [{currentAuthRecord.SubscriptionID}].");
-                                }
+                                DAClient.Send(new IPEndPoint(nas.NASIP, nas.IncomingPort), new DynamicAuthorizationExtentionPacket(MessageTypes.DisconnectRequest, new[] { new RadiusAttribute(AttributeType.UserName, currentAuthRecord.Username) }), nas.Secret);
+                            }
+                            catch (Exception ex)
+                            {
+                                logger.Warn(ex, $"Could not disconnect [{currentAuthRecord.Username}] from [{currentAuthRecord.NASIP}].");
                             }
                         }
                         catch (Exception ex)

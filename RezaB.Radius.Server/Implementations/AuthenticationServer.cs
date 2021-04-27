@@ -31,25 +31,33 @@ namespace RezaB.Radius.Server.Implementations
                 var radiusUser = db.RadiusAuthorizations.FirstOrDefault(user => user.Username == username);
                 if (radiusUser == null)
                 {
-                    return new RadiusPacket(packet, MessageTypes.AccessReject);
+                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User not found."));
+                    return responseReject;
                 }
                 // check active
                 processingLogger.Trace("Checking if user is active.");
                 if (!radiusUser.IsEnabled)
                 {
-                    return new RadiusPacket(packet, MessageTypes.AccessReject);
+                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User not active."));
+                    return responseReject;
                 }
                 // check user password
                 processingLogger.Trace("Checking password.");
                 if (!packet.HasValidPassword(radiusUser.Password, cachedNAS.Secret))
                 {
-                    return new RadiusPacket(packet, MessageTypes.AccessReject);
+                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User password invalid."));
+                    return responseReject;
                 }
                 // check simultaneous connections
                 processingLogger.Trace("Checking simultaneous use.");
                 if (radiusUser.LastInterimUpdate.HasValue && (!radiusUser.LastLogout.HasValue || radiusUser.LastInterimUpdate > radiusUser.LastLogout))
                 {
-                    return new RadiusPacket(packet, MessageTypes.AccessReject);
+                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User currently online."));
+                    return responseReject;
                 }
                 // initialize response packet
                 RadiusPacket responsePacket = null;
@@ -72,7 +80,9 @@ namespace RezaB.Radius.Server.Implementations
                     else
                     {
                         processingLogger.Trace("No expiration pool");
-                        return new RadiusPacket(packet, MessageTypes.AccessReject);
+                        var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                        responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User expired."));
+                        return responseReject;
                     }
                 }
 
@@ -98,6 +108,7 @@ namespace RezaB.Radius.Server.Implementations
                 // set last login
                 radiusUser.LastInterimUpdate = DateTime.Now;
                 radiusUser.NASIP = cachedNAS.NASIP.ToString();
+                radiusUser.UsingExpiredPool = usesExpiredPool;
                 db.SaveChanges();
 
                 // return response
