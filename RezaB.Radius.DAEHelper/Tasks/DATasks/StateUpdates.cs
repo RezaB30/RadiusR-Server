@@ -28,23 +28,24 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
         public override bool Run()
         {
             logger.Trace("Task started.");
-            using (RadiusREntities db = new RadiusREntities())
+            long currentId = 0;
+
+            using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
             {
-                // prepare query
-                db.Database.Log = dbLogger.Trace;
-                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => (s.IsEnabled && !_enabledStates.Contains(s.Subscription.State)) || (!s.IsEnabled && _enabledStates.Contains(s.Subscription.State)));
-                long currentId = 0;
-                using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
+                while (true)
                 {
-                    while (true)
+                    if (_isAborted)
                     {
-                        if (_isAborted)
+                        logger.Trace("Aborted!");
+                        return false;
+                    }
+                    try
+                    {
+                        using (RadiusREntities db = new RadiusREntities())
                         {
-                            logger.Trace("Aborted!");
-                            return false;
-                        }
-                        try
-                        {
+                            // prepare query
+                            db.Database.Log = dbLogger.Trace;
+                            var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => (s.IsEnabled && !_enabledStates.Contains(s.Subscription.State)) || (!s.IsEnabled && _enabledStates.Contains(s.Subscription.State)));
                             // fetch record
                             var currentAuthRecord = searchQuery.Where(s => s.SubscriptionID > currentId).FirstOrDefault();
                             if (currentAuthRecord == null)
@@ -114,11 +115,11 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                             }
 
                         }
-                        catch (Exception ex)
-                        {
-                            logger.Error(ex);
-                            return false;
-                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex);
+                        return false;
                     }
                 }
             }

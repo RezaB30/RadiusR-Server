@@ -80,12 +80,14 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="DACBindings.cs" />
     <Compile Include="HelperScheduler.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Tasks\DATasks\DynamicAccountingTask.cs" />
     <Compile Include="Tasks\DATasks\ExpirationReconnects.cs" />
     <Compile Include="Tasks\DATasks\ExpirationDisconnects.cs" />
     <Compile Include="Tasks\DATasks\HardQuotaExpirationDisconnects.cs" />
+    <Compile Include="Tasks\HardQuotaFlagClears.cs" />
     <Compile Include="Tasks\DATasks\QuotaWarnings.cs" />
     <Compile Include="Tasks\DATasks\RateLimitUpdates.cs" />
     <Compile Include="Tasks\DATasks\SmartQuotaChecks.cs" />

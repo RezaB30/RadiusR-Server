@@ -21,23 +21,24 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
         public override bool Run()
         {
             logger.Trace("Task started.");
-            using (RadiusREntities db = new RadiusREntities())
+            long currentId = 0;
+
+            using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
             {
-                // prepare query
-                db.Database.Log = dbLogger.Trace;
-                var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate > DateTime.Now && s.UsingExpiredPool && s.Subscription.Service.QuotaType != (short)RadiusR.DB.Enums.QuotaType.HardQuota && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
-                long currentId = 0;
-                using (var DAClient = new DAE.DynamicAuthorizationClient(DACPort, 3000, DACAddress))
+                while (true)
                 {
-                    while (true)
+                    if (_isAborted)
                     {
-                        if (_isAborted)
+                        logger.Trace("Aborted!");
+                        return false;
+                    }
+                    try
+                    {
+                        using (RadiusREntities db = new RadiusREntities())
                         {
-                            logger.Trace("Aborted!");
-                            return false;
-                        }
-                        try
-                        {
+                            // prepare query
+                            db.Database.Log = dbLogger.Trace;
+                            var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate > DateTime.Now && s.UsingExpiredPool && s.Subscription.Service.QuotaType != (short)RadiusR.DB.Enums.QuotaType.HardQuota && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
                             // fetch record
                             var currentAuthRecord = searchQuery.Where(s => s.SubscriptionID > currentId).FirstOrDefault();
                             if (currentAuthRecord == null)
@@ -66,11 +67,11 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                                 logger.Warn(ex, $"Could not disconnect [{currentAuthRecord.Username}] from [{currentAuthRecord.NASIP}].");
                             }
                         }
-                        catch (Exception ex)
-                        {
-                            logger.Error(ex);
-                            return false;
-                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex);
+                        return false;
                     }
                 }
             }
