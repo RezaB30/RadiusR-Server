@@ -1,0 +1,3 @@
+net stop MasterISSRadiusHelper
+sc delete MasterISSRadiusHelper
+pause

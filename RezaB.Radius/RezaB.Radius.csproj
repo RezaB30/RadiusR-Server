@@ -153,10 +153,6 @@
     <Compile Include="Vendors\VendorTypes.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\RezaB.Radius.Caching\RezaB.Radius.Caching.csproj">
-      <Project>{6bbd1ace-059a-4e76-8c5c-2c40ab4e9611}</Project>
-      <Name>RezaB.Radius.Caching</Name>
-    </ProjectReference>
     <ProjectReference Include="..\RezaB.Threading\RezaB.Threading.csproj">
       <Project>{500efaaf-9d30-407a-93cb-6ec4bc99b9ba}</Project>
       <Name>RezaB.Threading</Name>

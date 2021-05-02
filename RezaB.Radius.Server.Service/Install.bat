@@ -1,0 +1,2 @@
+sc create MasterISSRadiusServer binpath= "%~dp0RezaB.Radius.Server.Service.exe" displayname= "MasterISS Radius Server" start= auto && sc description MasterISSRadiusServer "Radius Server manages radius requests." && net start MasterISSRadiusServer && sc sdset MasterISSRadiusServer D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)(A;;CCLCSWLOCRRCRPWPDT;;;AU)
+pause

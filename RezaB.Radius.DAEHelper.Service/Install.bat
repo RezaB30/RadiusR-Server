@@ -1,0 +1,2 @@
+sc create MasterISSRadiusHelper binpath= "%~dp0RezaB.Radius.DAEHelper.Service.exe" displayname= "MasterISS Radius Helper" start= auto && sc description MasterISSRadiusHelper "Radius Helper updates records for radius server." && net start MasterISSRadiusHelper && sc sdset MasterISSRadiusHelper D:(A;;CCLCSWRPWPDTLOCRRC;;;SY)(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;BA)(A;;CCLCSWLOCRRC;;;IU)(A;;CCLCSWLOCRRC;;;SU)(A;;CCLCSWLOCRRCRPWPDT;;;AU)
+pause

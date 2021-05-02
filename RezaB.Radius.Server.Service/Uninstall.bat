@@ -1,0 +1,3 @@
+net stop MasterISSRadiusServer
+sc delete MasterISSRadiusServer
+pause
