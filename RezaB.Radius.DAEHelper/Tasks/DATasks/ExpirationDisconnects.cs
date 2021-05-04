@@ -42,7 +42,7 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                         {
                             // prepare query
                             db.Database.Log = dbLogger.Trace;
-                            var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && s.ExpirationDate <= DateTime.Now && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
+                            var searchQuery = db.RadiusAuthorizations.OrderBy(s => s.SubscriptionID).Where(s => s.IsEnabled && !s.UsingExpiredPool && s.ExpirationDate <= DateTime.Now && ((s.LastInterimUpdate.HasValue && !s.LastLogout.HasValue) || (s.LastInterimUpdate > s.LastLogout)));
                             // fetch record
                             var currentAuthRecord = searchQuery.Where(s => s.SubscriptionID > currentId).FirstOrDefault();
                             if (currentAuthRecord == null)

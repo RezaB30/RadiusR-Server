@@ -60,6 +60,33 @@ namespace RezaB.Radius.DAEHelper.Tasks.DATasks
                                     nas = DAServers.GetCachedNAS(currentNASIP);
                                 }
                             }
+                            // No quoue tariffs
+                            if (!string.IsNullOrWhiteSpace(currentAuthRecord.RateLimit) && currentAuthRecord.Subscription.Service.NoQueue )
+                            {
+                                // nas update
+                                if (currentAuthRecord.LastInterimUpdate.HasValue && currentAuthRecord.LastInterimUpdate > (currentAuthRecord.LastLogout ?? DateTime.MinValue) && !currentAuthRecord.UsingExpiredPool)
+                                {
+                                    try
+                                    {
+                                        DAClient.Send(new IPEndPoint(nas.NASIP, nas.IncomingPort), new DynamicAuthorizationExtentionPacket(MessageTypes.CoARequest, new[] { new RadiusAttribute(AttributeType.UserName, currentAuthRecord.Username), new PacketStructure.Vendors.MikrotikAttribute(PacketStructure.Vendors.MikrotikAttribute.Attributes.MikrotikRateLimit, "") }), nas.Secret);
+                                    }
+                                    catch (Exception ex)
+                                    {
+                                        logger.Warn(ex, $"Could not send COA for [{currentAuthRecord.Username}] from [{currentAuthRecord.NASIP}].");
+                                        continue;
+                                    }
+                                }
+                                // update auth record
+                                try
+                                {
+                                    db.Database.ExecuteSqlCommand("UPDATE RadiusAuthorization SET RateLimit = NULL WHERE SubscriptionID = @subId", new[] { new SqlParameter("@subId", currentAuthRecord.SubscriptionID) });
+                                }
+                                catch (Exception ex)
+                                {
+                                    logger.Warn(ex, $"Could not update authorization record with subscription id [{currentAuthRecord.SubscriptionID}].");
+                                    continue;
+                                }
+                            }
                             // check rate limit
                             if (currentAuthRecord.RateLimit != currentAuthRecord.Subscription.Service.CurrentRateLimit)
                             {
