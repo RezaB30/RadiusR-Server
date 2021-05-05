@@ -51,6 +51,14 @@ namespace RezaB.Radius.Server.Implementations
                     responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User password invalid."));
                     return responseReject;
                 }
+                // check CLID
+                var CLID = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CallingStationId);
+                if (CLID != null && !string.IsNullOrEmpty(radiusUser.CLID) && CLID.Value != radiusUser.CLID)
+                {
+                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "CLID invalid."));
+                    return responseReject;
+                }
                 // check simultaneous connections
                 processingLogger.Trace("Checking simultaneous use.");
                 if (radiusUser.LastInterimUpdate.HasValue && (!radiusUser.LastLogout.HasValue || radiusUser.LastInterimUpdate > radiusUser.LastLogout))
