@@ -30,7 +30,7 @@ namespace RezaB.Radius.DAEHelper.Tasks
                         LastInterimUpdate = DateTime.Now
                     };
 
-                    var result = db.Database.ExecuteSqlCommand("UPDATE RA SET IsHardQuotaExpired = NULL FROM RadiusAuthorization RA INNER JOIN Subscription SUB ON RA.SubscriptionID = SUB.ID INNER JOIN [Service] SRV ON SRV.ID = SUB.ServiceID WHERE SRV.QuotaType != @hardQType AND RA.IsHardQuotaExpired != NULL;", new[] { new SqlParameter("@hardQType", (short)RadiusR.DB.Enums.QuotaType.HardQuota) });
+                    var result = db.Database.ExecuteSqlCommand("UPDATE RA SET IsHardQuotaExpired = NULL FROM RadiusAuthorization RA INNER JOIN Subscription SUB ON RA.SubscriptionID = SUB.ID INNER JOIN [Service] SRV ON SRV.ID = SUB.ServiceID WHERE (SRV.QuotaType IS NULL OR SRV.QuotaType != @hardQType) AND RA.IsHardQuotaExpired IS NOT NULL;", new[] { new SqlParameter("@hardQType", (short)RadiusR.DB.Enums.QuotaType.HardQuota) });
                     logger.Trace($"{result} authorization records updated.");
                     logger.Trace("Task done.");
                 }
