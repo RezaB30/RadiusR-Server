@@ -51,13 +51,18 @@ namespace RezaB.Radius.Server.Implementations
                     responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "User password invalid."));
                     return responseReject;
                 }
+                // load settings
+                var serverSettingsCache = ServerCache.ServerSettingsCache.GetSettings();
                 // check CLID
-                var CLID = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CallingStationId);
-                if (CLID != null && !string.IsNullOrEmpty(radiusUser.CLID) && CLID.Value != radiusUser.CLID)
+                if (serverSettingsCache.CheckCLID)
                 {
-                    var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
-                    responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "CLID invalid."));
-                    return responseReject;
+                    var CLID = packet.Attributes.FirstOrDefault(attr => attr.Type == AttributeType.CallingStationId);
+                    if (CLID != null && !string.IsNullOrEmpty(radiusUser.CLID) && CLID.Value != radiusUser.CLID)
+                    {
+                        var responseReject = new RadiusPacket(packet, MessageTypes.AccessReject);
+                        responseReject.Attributes.Add(new RadiusAttribute(AttributeType.ReplyMessage, "CLID invalid."));
+                        return responseReject;
+                    }
                 }
                 // check simultaneous connections
                 processingLogger.Trace("Checking simultaneous use.");
@@ -110,8 +115,8 @@ namespace RezaB.Radius.Server.Implementations
                     responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.FramedIPAddress, "255.255.255.255"));
 
                 // set default values
-                responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.FramedProtocol, ServerCache.ServerSettingsCache.GetSettings().FramedProtocol));
-                responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.AcctInterimInterval, ServerCache.ServerSettingsCache.GetSettings().AccountingInterimInterval));
+                responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.FramedProtocol, serverSettingsCache.FramedProtocol));
+                responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.AcctInterimInterval, serverSettingsCache.AccountingInterimInterval));
 
                 // set last login
                 radiusUser.LastInterimUpdate = DateTime.Now;

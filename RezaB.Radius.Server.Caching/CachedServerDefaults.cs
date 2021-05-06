@@ -18,15 +18,15 @@ namespace RezaB.Radius.Server.Caching
 
         public TimeSpan NASListRefreshInterval { get; private set; }
 
-        //public TimeSpan DailyDisconnectionTime { get; private set; }
+        public bool CheckCLID { get; set; }
 
-        public CachedServerDefaults(int framedProtocol, int accountingInterimInterval, TimeSpan radiusSettingsRefreshInterval, TimeSpan nasListRefreshInterval)
+        public CachedServerDefaults(int framedProtocol, int accountingInterimInterval, TimeSpan radiusSettingsRefreshInterval, TimeSpan nasListRefreshInterval, bool checkCLID)
         {
             FramedProtocol = framedProtocol;
             AccountingInterimInterval = accountingInterimInterval;
             RadiusSettingsRefreshInterval = radiusSettingsRefreshInterval;
             NASListRefreshInterval = nasListRefreshInterval;
-            //DailyDisconnectionTime = dailyDisconnectionTime;
+            CheckCLID = checkCLID;
         }
 
         public CachedServerDefaults(IEnumerable<RadiusR.DB.RadiusDefault> dbSettings)
@@ -36,11 +36,12 @@ namespace RezaB.Radius.Server.Caching
             AccountingInterimInterval = Convert.ToInt32(list["AccountingInterimInterval"]);
             RadiusSettingsRefreshInterval = TimeSpan.ParseExact(list["RadiusSettingsRefreshInterval"], "hh\\:mm\\:ss", CultureInfo.InvariantCulture);
             NASListRefreshInterval = TimeSpan.ParseExact(list["NASListRefreshInterval"], "hh\\:mm\\:ss", CultureInfo.InvariantCulture);
+            CheckCLID = Convert.ToBoolean(list["CheckCLID"]);
         }
 
         public CachedServerDefaults Clone()
         {
-            return new CachedServerDefaults(FramedProtocol, AccountingInterimInterval, RadiusSettingsRefreshInterval, NASListRefreshInterval);
+            return new CachedServerDefaults(FramedProtocol, AccountingInterimInterval, RadiusSettingsRefreshInterval, NASListRefreshInterval, CheckCLID);
         }
     }
 }
