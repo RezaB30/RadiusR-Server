@@ -26,6 +26,8 @@ namespace RezaB.Radius.Server.Caching
 
         public IEnumerable<NASVerticalPool> VerticalPools { get; protected set; }
 
+        public NASVerticalDSLPool VerticalDSLPool { get; protected set; }
+
         public IEnumerable<NASExpiredPool> ExpiredPools { get; protected set; }
 
         public class NasNetmap
@@ -69,6 +71,25 @@ namespace RezaB.Radius.Server.Caching
             }
         }
 
+        public class NASVerticalDSLPool
+        {
+            public IEnumerable<IPSubnet> LocalIPSubnets { get; set; }
+
+            public IEnumerable<uint> DSLIPs { get; set; }
+
+            public NASVerticalDSLPool(string localIPSubnets, string dslIPs)
+            {
+                LocalIPSubnets = !string.IsNullOrWhiteSpace(localIPSubnets) ? localIPSubnets.Split('|').Select(subnet => IPTools.ParseIPSubnet(subnet)).ToArray() : new IPSubnet[0];
+                DSLIPs = !string.IsNullOrWhiteSpace(dslIPs) ? dslIPs.Split('|').Select(ip => IPTools.GetUIntValue(ip)) : new uint[0];
+            }
+
+            public NASVerticalDSLPool(IEnumerable<IPSubnet> localIPSubnets, IEnumerable<uint> dslIPs)
+            {
+                LocalIPSubnets = localIPSubnets;
+                DSLIPs = dslIPs;
+            }
+        }
+
         public class NASExpiredPool
         {
             public string PoolName { get; set; }
@@ -87,6 +108,7 @@ namespace RezaB.Radius.Server.Caching
             NATType = nas.NATType;
             Netmaps = nas.NATType == (short)NASNATTypes.Horizontal ? nas.NASNetmaps.Select(netmap => new NasNetmap(netmap.LocalIPSubnet, netmap.RealIPSubnet, netmap.PortCount, netmap.PreserveLastByte)) : null;
             VerticalPools = nas.NATType == (short)NASNATTypes.Vertical ? nas.NASVerticalIPMaps.Select(ipMap => new NASVerticalPool(ipMap.LocalIPStart, ipMap.LocalIPEnd, ipMap.RealIPStart, ipMap.RealIPEnd, ipMap.PortCount)) : null;
+            VerticalDSLPool = nas.NATType == (short)NASNATTypes.VerticalDSL ? new NASVerticalDSLPool(nas.NASVerticalDSLIPMap.LocalIPPools, nas.NASVerticalDSLIPMap.DSLLineIPs) : null;
             Backbone = nas.BackboneNAS != null ? new CachedNAS(nas.BackboneNAS) : null;
             ExpiredPools = nas.NASExpiredPools.Select(pool => new NASExpiredPool()
             {
@@ -126,6 +148,15 @@ namespace RezaB.Radius.Server.Caching
                         }
                     return null;
                 case (short)NASNATTypes.VerticalDSL:
+                    if (reference.VerticalDSLPool != null)
+                    {
+                        var currentRuleSet = IPTools.CreateVerticalNATRulesFromDSLRoutingTable(new VerticalDSLRoutingTable() { LocalIPSubnets = reference.VerticalDSLPool.LocalIPSubnets, DSLIPs = reference.VerticalDSLPool.DSLIPs });
+                        var validEntry = currentRuleSet.FirstOrDefault(rule => rule.LocalIP == localIP);
+                        if (validEntry != null)
+                        {
+                            return validEntry;
+                        }
+                    }
                     return null;
                 default:
                     return null;
@@ -149,6 +180,7 @@ namespace RezaB.Radius.Server.Caching
                 Backbone = Backbone != null ? Backbone.Clone() : null,
                 Netmaps = Netmaps != null ? Netmaps.ToArray().Select(n => new NasNetmap(n.LocalIPSubnet, n.RealIPSubnet, n.PortCount, n.PreserveLastByte)) : null,
                 VerticalPools = VerticalPools != null ? VerticalPools.ToArray().Select(v => new NASVerticalPool(v.LocalIPStart, v.LocalIPEnd, v.RealIPStart, v.RealIPEnd, v.PortCount)) : null,
+                VerticalDSLPool = VerticalDSLPool != null ? new NASVerticalDSLPool(VerticalDSLPool.LocalIPSubnets.Select(subnet => new IPSubnet() { MinBound = subnet.MinBound, Count = subnet.Count }).ToArray(), VerticalDSLPool.DSLIPs.ToArray()) : null,
                 ExpiredPools = ExpiredPools?.ToArray().Select(e => new NASExpiredPool()
                 {
                     PoolName = e.PoolName,
