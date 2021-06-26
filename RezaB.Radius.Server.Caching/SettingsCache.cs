@@ -17,6 +17,8 @@ namespace RezaB.Radius.Server.Caching
 
         public ServerDefaultsCache ServerSettingsCache { get; private set; }
 
+        public UserProfilesCache UserProfilesCache { get; private set; }
+
         private Thread RefresherThread { get; set; }
 
         public SettingsCache(string connectionString)
@@ -24,6 +26,7 @@ namespace RezaB.Radius.Server.Caching
             ServerSettingsCache = new ServerDefaultsCache(TimeSpan.FromMinutes(5), connectionString);
             ServerSettingsCache.RefreshRate = ServerSettingsCache.GetSettings().RadiusSettingsRefreshInterval;
             NASListCache = new NASesCache(ServerSettingsCache.GetSettings().NASListRefreshInterval, connectionString);
+            UserProfilesCache = new UserProfilesCache(ServerSettingsCache.RefreshRate, connectionString);
             // refresher
             RefresherThread = new Thread(new ThreadStart(Refresh));
             RefresherThread.IsBackground = true;
@@ -45,6 +48,11 @@ namespace RezaB.Radius.Server.Caching
                     {
                         NASListCache.Update();
                         NASListCache.RefreshRate = ServerSettingsCache.GetSettings().NASListRefreshInterval;
+                    }
+                    if (UserProfilesCache.HasExpired)
+                    {
+                        UserProfilesCache.Update();
+                        UserProfilesCache.RefreshRate = ServerSettingsCache.RefreshRate;
                     }
                     Thread.Sleep(TimeSpan.FromSeconds(5));
                 }

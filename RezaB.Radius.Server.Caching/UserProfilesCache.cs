@@ -1,34 +1,33 @@
 ﻿using RadiusR.DB;
 using System;
 using System.Collections.Generic;
+using System.Data.Entity.Core.EntityClient;
 using System.Linq;
-using System.Net;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Data.Entity;
-using System.Data.Entity.Core.EntityClient;
 
 namespace RezaB.Radius.Server.Caching
 {
-    public class NASesCache : UpdatableSettingsBase
+    public class UserProfilesCache : UpdatableSettingsBase
     {
         private ReaderWriterLockSlim locker = new ReaderWriterLockSlim();
-        private IDictionary<IPAddress, CachedNAS> InternalDictionary { get; set; }
 
-        public NASesCache(TimeSpan refreshRate, string connectionString) : base(refreshRate, connectionString)
+        private IDictionary<int, string> InternalDictionary { get; set; }
+
+        public UserProfilesCache(TimeSpan refreshRate, string connectionString) : base(refreshRate, connectionString)
         {
             Update();
         }
 
-        public CachedNAS GetCachedNAS(IPAddress ip)
+        public string GetCachedPoolName(int id)
         {
             if (locker.TryEnterReadLock(2000))
             {
                 try
                 {
-                    if (InternalDictionary.ContainsKey(ip))
-                        return InternalDictionary[ip].Clone();
+                    if (InternalDictionary.ContainsKey(id))
+                        return InternalDictionary[id];
                     return null;
                 }
                 finally
@@ -46,14 +45,14 @@ namespace RezaB.Radius.Server.Caching
         {
             using (RadiusREntities db = new RadiusREntities(new EntityConnection(ConnectionString)))
             {
-                Dictionary<IPAddress, CachedNAS> nasList;
-                nasList = db.NAS.Where(nas => !nas.Disabled).Include(nas => nas.NASVerticalIPMaps).Include(nas => nas.NASNetmaps).Include(nas => nas.NASVerticalDSLIPMap).Include(nas => nas.NASExpiredPools).ToArray().Select(nas => new CachedNAS(nas)).ToDictionary(c => c.NASIP, c => c);
+                Dictionary<int, string> profileList;
+                profileList = db.RadiusProfiles.ToArray().Select(rp => new { ID = rp.ID, PoolName = rp.PoolName }).ToDictionary(rp => rp.ID, rp => rp.PoolName);
 
                 if (locker.TryEnterWriteLock(10000))
                 {
                     try
                     {
-                        InternalDictionary = nasList;
+                        InternalDictionary = profileList;
                         base.Update();
                     }
                     finally

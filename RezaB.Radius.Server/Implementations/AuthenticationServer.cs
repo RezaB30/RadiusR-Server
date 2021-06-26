@@ -99,10 +99,21 @@ namespace RezaB.Radius.Server.Implementations
                     }
                 }
 
-
                 // checks passed so it is accepted
                 processingLogger.Trace("All checks passed, preparing response.");
                 responsePacket = responsePacket ?? new RadiusPacket(packet, MessageTypes.AccessAccept);
+
+                // set profile pool if not expired
+                if (!usesExpiredPool)
+                {
+                    var poolName = ServerCache.UserProfilesCache.GetCachedPoolName(cachedServerDefaults.DefaultProfile);
+
+                    if (radiusUser.ProfileID.HasValue)
+                        poolName = ServerCache.UserProfilesCache.GetCachedPoolName(radiusUser.ProfileID.Value);
+                        
+                    if (poolName != null)
+                        responsePacket.Attributes.Add(new RadiusAttribute(AttributeType.FramedPool, poolName));
+                }
 
                 // set rate limit if available (currently only Mikrotik)
                 if (!string.IsNullOrWhiteSpace(radiusUser.RateLimit))
